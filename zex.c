@@ -1,3 +1,9 @@
+/**
+ * @file zex.c
+ * @author re-nanashi
+ * @brief Simple text editor created in C
+ */
+
 /** includes **/
 #include <ctype.h>
 #include <errno.h>
@@ -8,25 +14,32 @@
 #include <unistd.h>
 
 /** defines **/
+/* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
 
 /** data **/
+/* @brief Editor's global state */
 struct editor_config {
     int screenrows;
     int screencols;
     struct termios orig_termios;
 };
-
 struct editor_config editor_conf;
 
 /** terminal **/
+/* @brief Clear entire screen then move cursor to the top */
 void
 clear_screen()
 {
-    write(STDOUT_FILENO, "\x1b[2J", 4); // clears the screen
+    write(STDOUT_FILENO, "\x1b[2J", 4); // clears the screen; check VT100
     write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
 }
 
+/**
+ * @brief Display error message then quit program
+ *
+ * @param Error message str
+ */
 void
 die(const char *s)
 {
@@ -36,6 +49,7 @@ die(const char *s)
     exit(1);
 }
 
+/* @brief Disable raw mode by setting back the state to its original config */
 void
 disable_raw_mode()
 {
@@ -43,6 +57,7 @@ disable_raw_mode()
         die("tcsetattr");
 }
 
+/* @brief Enable raw mode */
 void
 enable_raw_mode()
 {
@@ -64,6 +79,7 @@ enable_raw_mode()
 }
 
 // TODO: handle escape sequences
+/* @brief Read key input */
 char
 editor_read_key()
 {
@@ -76,6 +92,12 @@ editor_read_key()
     return c;
 }
 
+/**
+ * @brief Extract the window size of the terminal
+ *
+ * @param rows pointer to an integer to store the number of rows in the editor
+ * @param cols pointer to an integer to store the number of cols in the editor
+ */
 int
 get_window_size(int *rows, int *cols)
 {
