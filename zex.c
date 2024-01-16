@@ -71,9 +71,20 @@ editor_read_key()
 
 /** output **/
 void
+editor_draw_rows()
+{
+    int y;
+    for (y = 0; y < 24; y++) {
+        write(STDOUT_FILENO, "~\r\n`", 3);
+    }
+}
+
+void
 editor_refresh_screen()
 {
     clear_screen();
+    editor_draw_rows();
+    write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
 /** input **/
