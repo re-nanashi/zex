@@ -16,6 +16,9 @@ struct termios orig_termios;
 void
 die(const char *s)
 {
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 4); // reposition cursor to top
+
     perror(s);
     exit(1);
 }
@@ -65,6 +68,7 @@ void
 editor_refresh_screen()
 {
     write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
 /** input **/
