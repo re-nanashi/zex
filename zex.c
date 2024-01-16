@@ -17,7 +17,7 @@ void
 die(const char *s)
 {
     write(STDOUT_FILENO, "\x1b[2J", 4);
-    write(STDOUT_FILENO, "\x1b[H", 4); // reposition cursor to top
+    write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
 
     perror(s);
     exit(1);
