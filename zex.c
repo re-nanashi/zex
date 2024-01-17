@@ -186,29 +186,26 @@ editor_draw_welcome_mes(struct append_buf *ab, const char *format, ...)
         ab_append(ab, " ", 1);
     ab_append(ab, welcome_mes, welcome_mes_len);
 }
-
 void
 editor_draw_rows(struct append_buf *ab)
 {
     int y;
     int welcome_mes_row = editor_conf.screenrows / 3;
+
     for (y = 0; y < editor_conf.screenrows; y++) {
         if (y == welcome_mes_row) {
             editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
         }
         else if (y == welcome_mes_row + 2) {
-            // Additional message
             editor_draw_welcome_mes(
                 ab, "ZEX is open source and freely distributable");
         }
         else {
-            // Draw the tilde
             ab_append(ab, "~", 1);
         }
 
-        // K command erases part of the current line
-        // 0 erases the part of the line right of the cursor
-        ab_append(ab, "\x1b[K", 3);
+        ab_append(ab, "\x1b[K", 3); // Erase part of the current line
+
         if (y < editor_conf.screenrows - 1) {
             ab_append(ab, "\r\n", 2);
         }
