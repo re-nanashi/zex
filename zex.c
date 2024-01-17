@@ -164,8 +164,12 @@ editor_draw_rows(struct append_buf *ab)
 {
     int y;
     for (y = 0; y < editor_conf.screenrows; y++) {
+        // Draw the tilde
         ab_append(ab, "~", 1);
 
+        // K command erases part of the current line
+        // 0 erases the part of the line right of the cursor
+        ab_append(ab, "\x1b[K", 3);
         if (y < editor_conf.screenrows - 1) {
             ab_append(ab, "\r\n", 2);
         }
@@ -177,12 +181,13 @@ editor_refresh_screen()
 {
     struct append_buf ab = ABUF_INIT;
 
-    ab_append(&ab, "\x1b[2J", 4); // clears the screen; check VT100
+    ab_append(&ab, "\x1b[?25l", 6); // hide cursor when repainting
     ab_append(&ab, "\x1b[H", 3); // reposition cursor to top
 
     editor_draw_rows(&ab);
 
     ab_append(&ab, "\x1b[H", 3);
+    ab_append(&ab, "\x1b[?25h", 6);
 
     write(STDOUT_FILENO, ab.b, ab.len);
     ab_free(&ab);
