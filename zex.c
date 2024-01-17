@@ -15,6 +15,8 @@
 #include <unistd.h>
 
 /** defines **/
+#define ZEX_VERSION "0.0.1"
+
 /* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
 
@@ -164,8 +166,20 @@ editor_draw_rows(struct append_buf *ab)
 {
     int y;
     for (y = 0; y < editor_conf.screenrows; y++) {
-        // Draw the tilde
-        ab_append(ab, "~", 1);
+        if (y == editor_conf.screenrows / 3) {
+            char welcome_mes[80];
+            int welcome_mes_len =
+                snprintf(welcome_mes, sizeof(welcome_mes),
+                         "Zex editor -- version %s", ZEX_VERSION);
+            if (welcome_mes_len > editor_conf.screencols)
+                welcome_mes_len = editor_conf.screencols;
+            ab_append(ab, welcome_mes, welcome_mes_len);
+        }
+        else {
+
+            // Draw the tilde
+            ab_append(ab, "~", 1);
+        }
 
         // K command erases part of the current line
         // 0 erases the part of the line right of the cursor
