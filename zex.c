@@ -27,15 +27,6 @@ struct editor_config {
 };
 struct editor_config editor_conf;
 
-/** terminal **/
-/* @brief Clear entire screen then move cursor to the top */
-void
-clear_screen()
-{
-    write(STDOUT_FILENO, "\x1b[2J", 4); // clears the screen; check VT100
-    write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
-}
-
 /**
  * @brief Display error message then quit program
  *
@@ -44,7 +35,8 @@ clear_screen()
 void
 die(const char *s)
 {
-    clear_screen();
+    write(STDOUT_FILENO, "\x1b[2J", 4); // clears the screen; check VT100
+    write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
 
     perror(s);
     exit(1);
@@ -168,14 +160,14 @@ ab_free(struct append_buf *ab)
 
 /** output **/
 void
-editor_draw_rows()
+editor_draw_rows(struct append_buf *ab)
 {
     int y;
     for (y = 0; y < editor_conf.screenrows; y++) {
-        write(STDOUT_FILENO, "~", 1);
+        ab_append(ab, "~", 1);
 
         if (y < editor_conf.screenrows - 1) {
-            write(STDOUT_FILENO, "\r\n", 2);
+            ab_append(ab, "\r\n", 2);
         }
     }
 }
@@ -183,9 +175,17 @@ editor_draw_rows()
 void
 editor_refresh_screen()
 {
-    clear_screen();
-    editor_draw_rows();
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    struct append_buf ab = ABUF_INIT;
+
+    ab_append(&ab, "\x1b[2J", 4); // clears the screen; check VT100
+    ab_append(&ab, "\x1b[H", 3); // reposition cursor to top
+
+    editor_draw_rows(&ab);
+
+    ab_append(&ab, "\x1b[H", 3);
+
+    write(STDOUT_FILENO, ab.b, ab.len);
+    ab_free(&ab);
 }
 
 /** input **/
@@ -196,7 +196,9 @@ editor_process_keypress()
 
     switch (c) {
         case CTRL_KEY('q'):
-            clear_screen();
+            write(STDOUT_FILENO, "\x1b[2J",
+                  4); // clears the screen; check VT100
+            write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
             exit(0);
             break;
     }
