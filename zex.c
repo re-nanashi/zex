@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
@@ -131,10 +132,38 @@ get_window_size(int *rows, int *cols)
         return get_cursor_position(rows, cols);
     }
     else {
-        *cols = ws.ws_col;
         *rows = ws.ws_row;
+        *cols = ws.ws_col;
         return 0;
     }
+}
+
+struct append_buf {
+    char *b;
+    int len;
+};
+
+// Default value/initialization for buffer
+#define ABUF_INIT                                                             \
+    {                                                                         \
+        NULL, 0                                                               \
+    }
+
+void
+ab_append(struct append_buf *ab, const char *s, int len)
+{
+    char *new = realloc(ab->b, ab->len + len);
+
+    if (new == NULL) return;
+    memcpy(&new[ab->len], s, len);
+    ab->b = new; // point the buffer to the address of new
+    ab->len += len;
+}
+
+void
+ab_free(struct append_buf *ab)
+{
+    free(ab->b);
 }
 
 /** output **/
