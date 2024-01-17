@@ -13,6 +13,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
+#include <stdarg.h>
 
 /** defines **/
 #define ZEX_VERSION "0.0.1"
@@ -162,21 +163,45 @@ ab_free(struct append_buf *ab)
 
 /** output **/
 void
+editor_draw_welcome_mes(struct append_buf *ab, const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    char welcome_mes[80];
+    int welcome_mes_len =
+        vsnprintf(welcome_mes, sizeof(welcome_mes), format, args);
+    va_end(args);
+
+    if (welcome_mes_len > editor_conf.screencols)
+        welcome_mes_len = editor_conf.screencols;
+
+    int padding = (editor_conf.screencols - welcome_mes_len) / 2;
+    if (padding) {
+        ab_append(ab, "~", 1);
+        padding--;
+    }
+
+    while (padding--)
+        ab_append(ab, " ", 1);
+    ab_append(ab, welcome_mes, welcome_mes_len);
+}
+
+void
 editor_draw_rows(struct append_buf *ab)
 {
     int y;
+    int welcome_mes_row = editor_conf.screenrows / 3;
     for (y = 0; y < editor_conf.screenrows; y++) {
-        if (y == editor_conf.screenrows / 3) {
-            char welcome_mes[80];
-            int welcome_mes_len =
-                snprintf(welcome_mes, sizeof(welcome_mes),
-                         "Zex editor -- version %s", ZEX_VERSION);
-            if (welcome_mes_len > editor_conf.screencols)
-                welcome_mes_len = editor_conf.screencols;
-            ab_append(ab, welcome_mes, welcome_mes_len);
+        if (y == welcome_mes_row) {
+            editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
+        }
+        else if (y == welcome_mes_row + 2) {
+            // Additional message
+            editor_draw_welcome_mes(
+                ab, "ZEX is open source and freely distributable");
         }
         else {
-
             // Draw the tilde
             ab_append(ab, "~", 1);
         }
