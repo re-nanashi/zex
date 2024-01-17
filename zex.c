@@ -143,7 +143,11 @@ editor_draw_rows()
 {
     int y;
     for (y = 0; y < editor_conf.screenrows; y++) {
-        write(STDOUT_FILENO, "~\r\n`", 3);
+        write(STDOUT_FILENO, "~", 1);
+
+        if (y < editor_conf.screenrows - 1) {
+            write(STDOUT_FILENO, "\r\n", 2);
+        }
     }
 }
 
