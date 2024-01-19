@@ -22,8 +22,11 @@
 #define CTRL_KEY(k) ((k)&0x1f)
 
 /** data **/
+enum modes { NORMAL, INSERT };
+
 /* @brief Editor's global state */
 struct editor_config {
+    int cx, cy;
     int screenrows;
     int screencols;
     struct termios orig_termios;
@@ -85,7 +88,32 @@ editor_read_key()
         if (nread == -1 && errno != EAGAIN) die("read");
     }
 
-    return c;
+    // Handle arrow keys
+    if (c == '\x1b') {
+        char seq[3];
+
+        // we immediately read two more bytes into seq buffer
+        // if both reads time out; user just pressed Escape
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+
+        if (seq[0] == '[') {
+            switch (seq[1]) {
+                case 'A':
+                    return 'k';
+                case 'B':
+                    return 'j';
+                case 'C':
+                    return 'l';
+                case 'D':
+                    return 'h';
+            }
+        }
+        return '\x1b';
+    }
+    else {
+        return c;
+    }
 }
 
 int
@@ -138,7 +166,7 @@ struct append_buf {
     int len;
 };
 
-// Default value/initialization for buffer
+/* @brief Default value/initialization for buffer */
 #define ABUF_INIT                                                             \
     {                                                                         \
         NULL, 0                                                               \
@@ -186,6 +214,7 @@ editor_draw_welcome_mes(struct append_buf *ab, const char *format, ...)
         ab_append(ab, " ", 1);
     ab_append(ab, welcome_mes, welcome_mes_len);
 }
+
 void
 editor_draw_rows(struct append_buf *ab)
 {
@@ -222,7 +251,12 @@ editor_refresh_screen()
 
     editor_draw_rows(&ab);
 
-    ab_append(&ab, "\x1b[H", 3);
+    // Move the cursor to the position stored in editor_conf
+    char buf[32];
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", editor_conf.cy + 1,
+             editor_conf.cx + 1);
+    ab_append(&ab, buf, strlen(buf));
+
     ab_append(&ab, "\x1b[?25h", 6);
 
     write(STDOUT_FILENO, ab.b, ab.len);
@@ -230,6 +264,25 @@ editor_refresh_screen()
 }
 
 /** input **/
+void
+editor_move_cursor(char key)
+{
+    switch (key) {
+        case 'h':
+            editor_conf.cx--;
+            break;
+        case 'l':
+            editor_conf.cx++;
+            break;
+        case 'k':
+            editor_conf.cy--;
+            break;
+        case 'j':
+            editor_conf.cy++;
+            break;
+    }
+}
+
 void
 editor_process_keypress()
 {
@@ -242,6 +295,12 @@ editor_process_keypress()
             write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
             exit(0);
             break;
+        case 'h':
+        case 'l':
+        case 'k':
+        case 'j':
+            editor_move_cursor(c);
+            break;
     }
 }
 
@@ -249,6 +308,9 @@ editor_process_keypress()
 void
 init_editor()
 {
+    editor_conf.cx = 0;
+    editor_conf.cy = 0;
+
     if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
         == -1)
         die("get_window_size");
