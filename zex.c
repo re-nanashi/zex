@@ -327,10 +327,15 @@ refresh_screen_thread()
     int prev_num_of_rows = editor_conf.screenrows,
         prev_num_of_cols = editor_conf.screencols;
 
+    struct timespec sleep_time;
+    sleep_time.tv_sec = 0;
+    sleep_time.tv_nsec = 10000000;
+
     while (1) {
-        if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
-            == -1)
-            die("get_window_size");
+        int result =
+            get_window_size(&editor_conf.screenrows, &editor_conf.screencols);
+
+        if (result == -1) die("get_window_size");
 
         if (prev_num_of_rows != editor_conf.screenrows
             || prev_num_of_cols != editor_conf.screencols)
@@ -340,6 +345,8 @@ refresh_screen_thread()
 
             editor_refresh_screen();
         }
+
+        nanosleep(&sleep_time, NULL);
     }
 
     return NULL;
