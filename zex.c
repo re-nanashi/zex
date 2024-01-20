@@ -21,9 +21,17 @@
 /* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
 
-/** data **/
-enum modes { NORMAL, INSERT };
+enum EditorKeys {
+    ARROW_UP = 1000,
+    ARROW_DOWN,
+    ARROW_RIGHT,
+    ARROW_LEFT,
+};
 
+// TODO: Create modes
+enum Modes { NORMAL, INSERT };
+
+/** data **/
 /* @brief Editor's global state */
 struct editor_config {
     int cx, cy;
@@ -79,7 +87,7 @@ enable_raw_mode()
 
 // TODO: handle escape sequences
 /* @brief Read key input */
-char
+int
 editor_read_key()
 {
     int nread;
@@ -100,13 +108,13 @@ editor_read_key()
         if (seq[0] == '[') {
             switch (seq[1]) {
                 case 'A':
-                    return 'k';
+                    return ARROW_UP;
                 case 'B':
-                    return 'j';
+                    return ARROW_DOWN;
                 case 'C':
-                    return 'l';
+                    return ARROW_RIGHT;
                 case 'D':
-                    return 'h';
+                    return ARROW_LEFT;
             }
         }
         return '\x1b';
@@ -203,7 +211,6 @@ editor_draw_welcome_mes(struct append_buf *ab, const char *format, ...)
 
     if (welcome_mes_len > editor_conf.screencols)
         welcome_mes_len = editor_conf.screencols;
-
     int padding = (editor_conf.screencols - welcome_mes_len) / 2;
     if (padding) {
         ab_append(ab, "~", 1);
@@ -212,6 +219,7 @@ editor_draw_welcome_mes(struct append_buf *ab, const char *format, ...)
 
     while (padding--)
         ab_append(ab, " ", 1);
+
     ab_append(ab, welcome_mes, welcome_mes_len);
 }
 
@@ -265,19 +273,19 @@ editor_refresh_screen()
 
 /** input **/
 void
-editor_move_cursor(char key)
+editor_move_cursor(int key)
 {
     switch (key) {
-        case 'h':
+        case ARROW_LEFT:
             editor_conf.cx--;
             break;
-        case 'l':
+        case ARROW_RIGHT:
             editor_conf.cx++;
             break;
-        case 'k':
+        case ARROW_UP:
             editor_conf.cy--;
             break;
-        case 'j':
+        case ARROW_DOWN:
             editor_conf.cy++;
             break;
     }
@@ -286,7 +294,7 @@ editor_move_cursor(char key)
 void
 editor_process_keypress()
 {
-    char c = editor_read_key();
+    int c = editor_read_key();
 
     switch (c) {
         case CTRL_KEY('q'):
@@ -295,10 +303,10 @@ editor_process_keypress()
             write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
             exit(0);
             break;
-        case 'h':
-        case 'l':
-        case 'k':
-        case 'j':
+        case ARROW_UP:
+        case ARROW_DOWN:
+        case ARROW_RIGHT:
+        case ARROW_LEFT:
             editor_move_cursor(c);
             break;
     }
