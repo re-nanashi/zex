@@ -277,16 +277,16 @@ editor_move_cursor(int key)
 {
     switch (key) {
         case ARROW_LEFT:
-            editor_conf.cx--;
+            if (editor_conf.cx != 0) editor_conf.cx--;
             break;
         case ARROW_RIGHT:
-            editor_conf.cx++;
+            if (editor_conf.cx != editor_conf.screencols - 1) editor_conf.cx++;
             break;
         case ARROW_UP:
-            editor_conf.cy--;
+            if (editor_conf.cy != 0) editor_conf.cy--;
             break;
         case ARROW_DOWN:
-            editor_conf.cy++;
+            if (editor_conf.cy != editor_conf.screenrows - 1) editor_conf.cy++;
             break;
     }
 }
