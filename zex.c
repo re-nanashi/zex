@@ -14,6 +14,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <stdarg.h>
+#include <pthread.h>
 
 /** defines **/
 #define ZEX_VERSION "0.0.1"
@@ -101,11 +102,11 @@ editor_read_key()
         if (nread == -1 && errno != EAGAIN) die("read");
     }
 
-    // Handle arrow keys
+    // Handle not so ordinary keys
     if (c == '\x1b') {
         char seq[3];
 
-        // we immediately read two more bytes into seq buffer
+        // Immediately read two more bytes into seq buffer
         // if both reads time out; user just pressed Escape
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
@@ -254,6 +255,7 @@ editor_draw_welcome_mes(struct append_buf *ab, const char *format, ...)
     if (welcome_mes_len > editor_conf.screencols)
         welcome_mes_len = editor_conf.screencols;
     int padding = (editor_conf.screencols - welcome_mes_len) / 2;
+
     if (padding) {
         ab_append(ab, "~", 1);
         padding--;
@@ -294,6 +296,11 @@ editor_draw_rows(struct append_buf *ab)
 void
 editor_refresh_screen()
 {
+    if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
+        == -1)
+        die("get_window_size");
+
+    // Buffer init
     struct append_buf ab = ABUF_INIT;
 
     ab_append(&ab, "\x1b[?25l", 6); // hide cursor when repainting
@@ -311,6 +318,31 @@ editor_refresh_screen()
 
     write(STDOUT_FILENO, ab.b, ab.len);
     ab_free(&ab);
+}
+
+/* @brief Handle screen resolution changes */
+void *
+refresh_screen_thread()
+{
+    int prev_num_of_rows = editor_conf.screenrows,
+        prev_num_of_cols = editor_conf.screencols;
+
+    while (1) {
+        if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
+            == -1)
+            die("get_window_size");
+
+        if (prev_num_of_rows != editor_conf.screenrows
+            || prev_num_of_cols != editor_conf.screencols)
+        {
+            prev_num_of_rows = editor_conf.screenrows;
+            prev_num_of_cols = editor_conf.screencols;
+
+            editor_refresh_screen();
+        }
+    }
+
+    return NULL;
 }
 
 /** input **/
@@ -384,6 +416,19 @@ main()
 {
     enable_raw_mode();
     init_editor();
+
+    pthread_t thread;
+
+    // Create a separate thread for handling terminal resolution changes
+    if (pthread_create(&thread, NULL, refresh_screen_thread, NULL) != 0) {
+        die("pthread_create");
+        return 1;
+    }
+
+    if (pthread_detach(thread) != 0) {
+        die("pthread_detach");
+        return 1;
+    }
 
     while (1) {
         editor_refresh_screen();
