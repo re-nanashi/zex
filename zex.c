@@ -26,6 +26,9 @@ enum EditorKeys {
     ARROW_DOWN,
     ARROW_RIGHT,
     ARROW_LEFT,
+    HOME_KEY,
+    END_KEY,
+    DEL_KEY,
     PAGE_UP,
     PAGE_DOWN
 };
@@ -113,10 +116,20 @@ editor_read_key()
                 if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
                 if (seq[2] == '~') {
                     switch (seq[1]) {
+                        case '1':
+                            return HOME_KEY;
+                        case '3':
+                            return DEL_KEY;
+                        case '4':
+                            return END_KEY;
                         case '5':
                             return PAGE_UP;
                         case '6':
                             return PAGE_DOWN;
+                        case '7':
+                            return HOME_KEY;
+                        case '8':
+                            return END_KEY;
                     }
                 }
             }
@@ -130,7 +143,19 @@ editor_read_key()
                         return ARROW_RIGHT;
                     case 'D':
                         return ARROW_LEFT;
+                    case 'H':
+                        return HOME_KEY;
+                    case 'F':
+                        return END_KEY;
                 }
+            }
+        }
+        else if (seq[0] == '0') {
+            switch (seq[1]) {
+                case 'H':
+                    return HOME_KEY;
+                case 'F':
+                    return END_KEY;
             }
         }
 
@@ -327,6 +352,12 @@ editor_process_keypress()
                 editor_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
             }
         } break;
+        case HOME_KEY:
+            editor_conf.cx = 0;
+            break;
+        case END_KEY:
+            editor_conf.cx = editor_conf.screencols - 1;
+            break;
         case ARROW_UP:
         case ARROW_DOWN:
         case ARROW_RIGHT:
