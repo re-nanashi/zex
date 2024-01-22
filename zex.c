@@ -321,8 +321,8 @@ editor_draw_rows(struct append_buf *ab)
     for (y = 0; y < editor_conf.screenrows; y++) {
         // Only display welcome message if numrows is zero; no file as
         // arguments
-        if (editor_conf.numrows == 0 && y >= editor_conf.numrows) {
-            if (y == welcome_mes_row) {
+        if (y >= editor_conf.numrows) {
+            if (editor_conf.numrows == 0 && y == welcome_mes_row) {
                 editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
             }
             else if (y == welcome_mes_row + 2) {
