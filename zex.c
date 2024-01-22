@@ -5,12 +5,14 @@
  */
 
 /** includes **/
+#define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -38,15 +40,24 @@ enum EditorKeys {
 enum Modes { NORMAL, INSERT };
 
 /** data **/
+
+typedef struct editor_row {
+    int size;
+    char *chars;
+} e_row;
+
 /* @brief Editor's global state */
 struct editor_config {
     int cx, cy;
     int screenrows;
     int screencols;
+    int numrows;
+    e_row row;
     struct termios orig_termios;
 };
 struct editor_config editor_conf;
 
+/** terminal **/
 /**
  * @brief Display error message then quit program
  *
@@ -212,6 +223,37 @@ get_window_size(int *rows, int *cols)
     }
 }
 
+/* file i/o */
+// TODO: Allow the user to open an actual file.
+void
+editor_open(char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    if (!fp) die("fopen");
+
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+    linelen = getline(&line, &linecap, fp);
+
+    if (linelen != -1) {
+        // skip whitespace
+        while (linelen > 0
+               && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
+            linelen--;
+
+        editor_conf.row.size = linelen;
+        editor_conf.row.chars = malloc(linelen + 1);
+        memcpy(editor_conf.row.chars, line, linelen);
+        editor_conf.row.chars[linelen] = '\0';
+        editor_conf.numrows = 1;
+    }
+
+    free(line);
+    fclose(fp);
+}
+
+/* append buffer */
 struct append_buf {
     char *b;
     int len;
@@ -274,15 +316,22 @@ editor_draw_rows(struct append_buf *ab)
     int welcome_mes_row = editor_conf.screenrows / 3;
 
     for (y = 0; y < editor_conf.screenrows; y++) {
-        if (y == welcome_mes_row) {
-            editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
-        }
-        else if (y == welcome_mes_row + 2) {
-            editor_draw_welcome_mes(
-                ab, "ZEX is open source and freely distributable");
+        if (y >= editor_conf.numrows) {
+            if (y == welcome_mes_row) {
+                editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
+            }
+            else if (y == welcome_mes_row + 2) {
+                editor_draw_welcome_mes(
+                    ab, "ZEX is open source and freely distributable");
+            }
+            else {
+                ab_append(ab, "~", 1);
+            }
         }
         else {
-            ab_append(ab, "~", 1);
+            int len = editor_conf.row.size;
+            if (len > editor_conf.screencols) len = editor_conf.screencols;
+            ab_append(ab, editor_conf.row.chars, len);
         }
 
         ab_append(ab, "\x1b[K", 3); // Erase part of the current line
@@ -412,6 +461,7 @@ init_editor()
 {
     editor_conf.cx = 0;
     editor_conf.cy = 0;
+    editor_conf.numrows = 0;
 
     if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
         == -1)
@@ -419,10 +469,13 @@ init_editor()
 }
 
 int
-main()
+main(int argc, char *argv[])
 {
     enable_raw_mode();
     init_editor();
+    if (argc >= 2) {
+        editor_open(argv[1]);
+    }
 
     pthread_t thread;
 
