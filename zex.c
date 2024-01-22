@@ -22,7 +22,8 @@
 #include <pthread.h>
 
 /** defines **/
-#define ZEX_VERSION "0.0.1"
+#define ZEX_VERSION         "0.0.1"
+#define INITIAL_BUFFER_SIZE 2048
 
 /* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
@@ -55,7 +56,7 @@ struct editor_config {
     int screenrows;
     int screencols;
     int numrows;
-    e_row row;
+    e_row *rows;
     struct termios orig_termios;
 };
 struct editor_config editor_conf;
@@ -227,32 +228,26 @@ get_window_size(int *rows, int *cols)
 }
 
 /* file i/o */
-// TODO: Allow the user to open an actual file.
 void
 editor_open(char *filename)
 {
     FILE *fp = fopen(filename, "r");
     if (!fp) die("fopen");
 
-    char *line = NULL;
-    size_t linecap = 0;
-    ssize_t linelen;
-    linelen = getline(&line, &linecap, fp);
+    char line[INITIAL_BUFFER_SIZE];
+    int i = 0;
+    while (fgets(line, INITIAL_BUFFER_SIZE, fp)) {
+        int len = strlen(line);
+        editor_conf.rows[i].size = len;
 
-    if (linelen != -1) {
-        // skip whitespace
-        while (linelen > 0
-               && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
-            linelen--;
+        editor_conf.rows[i].chars = (char *)malloc(len + 1);
+        memcpy(editor_conf.rows[i].chars, line, len);
+        editor_conf.rows[i].chars[len] = '\0';
 
-        editor_conf.row.size = linelen;
-        editor_conf.row.chars = malloc(linelen + 1);
-        memcpy(editor_conf.row.chars, line, linelen);
-        editor_conf.row.chars[linelen] = '\0';
-        editor_conf.numrows = 1;
+        editor_conf.numrows++;
+        i++;
     }
 
-    free(line);
     fclose(fp);
 }
 
