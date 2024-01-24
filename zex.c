@@ -27,6 +27,7 @@
 
 /* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
+#define IS_ZERO(x)  (x == 0)
 
 enum EditorKeys {
     ARROW_UP = 1000,
@@ -226,6 +227,20 @@ get_window_size(int *rows, int *cols)
         return 0;
     }
 }
+/* row operations */
+void
+editor_append_row(char *s, size_t len)
+{
+    editor_conf.rows =
+        realloc(editor_conf.rows, sizeof(e_row) * (editor_conf.numrows + 1));
+
+    int i = editor_conf.numrows;
+    editor_conf.rows[i].size = len;
+    editor_conf.rows[i].chars = malloc(len + 1);
+    memcpy(editor_conf.rows[i].chars, s, len);
+    editor_conf.rows[i].chars[len] = '\0';
+    editor_conf.numrows++;
+}
 
 /* file i/o */
 void
@@ -234,20 +249,21 @@ editor_open(char *filename)
     FILE *fp = fopen(filename, "r");
     if (!fp) die("fopen");
 
-    char line[INITIAL_BUFFER_SIZE];
-    int i = 0;
-    while (fgets(line, INITIAL_BUFFER_SIZE, fp)) {
-        int len = strlen(line);
-        editor_conf.rows[i].size = len;
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
 
-        editor_conf.rows[i].chars = (char *)malloc(len + 1);
-        memcpy(editor_conf.rows[i].chars, line, len);
-        editor_conf.rows[i].chars[len] = '\0';
-
-        editor_conf.numrows++;
-        i++;
+    // Loop through all the line rows in the file
+    while ((linelen = getline(&line, &linecap, (FILE *)fp)) != -1) {
+        if (linelen != -1) {
+            while (linelen > 0
+                   && (line[linelen - 1] == '\n' || line[linelen - 1] == 'r'))
+                linelen--;
+            editor_append_row(line, linelen);
+        }
     }
 
+    free(line);
     fclose(fp);
 }
 
@@ -316,11 +332,12 @@ editor_draw_rows(struct append_buf *ab)
     for (y = 0; y < editor_conf.screenrows; y++) {
         // Only display welcome message if numrows is zero; no file as
         // arguments
-        if (editor_conf.numrows == 0 && y >= editor_conf.numrows) {
-            if (y == welcome_mes_row) {
+        if (y >= editor_conf.numrows) {
+            if (IS_ZERO(editor_conf.numrows) && y == welcome_mes_row) {
                 editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
             }
-            else if (y == welcome_mes_row + 2) {
+            else if (IS_ZERO(editor_conf.numrows) && y == welcome_mes_row + 2)
+            {
                 editor_draw_welcome_mes(
                     ab, "ZEX is open source and freely distributable");
             }
@@ -329,9 +346,9 @@ editor_draw_rows(struct append_buf *ab)
             }
         }
         else {
-            int len = editor_conf.row.size;
+            int len = editor_conf.rows[y].size;
             if (len > editor_conf.screencols) len = editor_conf.screencols;
-            ab_append(ab, editor_conf.row.chars, len);
+            ab_append(ab, editor_conf.rows[y].chars, len);
         }
 
         ab_append(ab, "\x1b[K", 3); // Erase part of the current line
@@ -462,6 +479,7 @@ init_editor()
     editor_conf.cx = 0;
     editor_conf.cy = 0;
     editor_conf.numrows = 0;
+    editor_conf.rows = NULL;
 
     if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
         == -1)
