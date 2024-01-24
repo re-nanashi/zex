@@ -332,12 +332,17 @@ editor_draw_rows(struct append_buf *ab)
     for (y = 0; y < editor_conf.screenrows; y++) {
         // Only display welcome message if numrows is zero; no file as
         // arguments
+<<<<<<< HEAD
         if (y >= editor_conf.numrows) {
 <<<<<<< HEAD
             if (IS_ZERO(editor_conf.numrows) && y == welcome_mes_row) {
 =======
             if (editor_conf.numrows == 0 && y == welcome_mes_row) {
 >>>>>>> main
+=======
+        if (editor_conf.numrows == 0 && y >= editor_conf.numrows) {
+            if (y == welcome_mes_row) {
+>>>>>>> parent of a665a99 (fix: Display welcome message when user starts program with no args)
                 editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
             }
             else if (IS_ZERO(editor_conf.numrows) && y == welcome_mes_row + 2)
