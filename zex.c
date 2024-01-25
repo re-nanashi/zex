@@ -54,6 +54,7 @@ typedef struct editor_row {
 /* @brief Editor's global state */
 struct editor_config {
     int cx, cy;
+    int row_offset;
     int screenrows;
     int screencols;
     int numrows;
@@ -298,6 +299,18 @@ ab_free(struct append_buf *ab)
 
 /** output **/
 void
+editor_scroll()
+{
+    if (editor_conf.cy < editor_conf.row_offset) {
+        editor_conf.row_offset = editor_conf.cy;
+    }
+
+    if (editor_conf.cy >= editor_conf.row_offset + editor_conf.screenrows) {
+        editor_conf.row_offset = editor_conf.cy - editor_conf.screenrows + 1;
+    }
+}
+
+void
 editor_draw_welcome_mes(struct append_buf *ab, const char *format, ...)
 {
     va_list args;
@@ -330,9 +343,9 @@ editor_draw_rows(struct append_buf *ab)
     int welcome_mes_row = editor_conf.screenrows / 3;
 
     for (y = 0; y < editor_conf.screenrows; y++) {
-        // Only display welcome message if numrows is zero; no file as
-        // arguments
-        if (y >= editor_conf.numrows) {
+        int filerow = y + editor_conf.row_offset;
+        if (filerow >= editor_conf.numrows) {
+            // Display welcome message if numrows is zero; no file as arguments
             if (IS_ZERO(editor_conf.numrows) && y == welcome_mes_row) {
                 editor_draw_welcome_mes(ab, "ZEX editor v%s", ZEX_VERSION);
             }
@@ -346,9 +359,9 @@ editor_draw_rows(struct append_buf *ab)
             }
         }
         else {
-            int len = editor_conf.rows[y].size;
+            int len = editor_conf.rows[filerow].size;
             if (len > editor_conf.screencols) len = editor_conf.screencols;
-            ab_append(ab, editor_conf.rows[y].chars, len);
+            ab_append(ab, editor_conf.rows[filerow].chars, len);
         }
 
         ab_append(ab, "\x1b[K", 3); // Erase part of the current line
@@ -362,6 +375,8 @@ editor_draw_rows(struct append_buf *ab)
 void
 editor_refresh_screen()
 {
+    editor_scroll();
+
     if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
         == -1)
         die("get_window_size");
@@ -376,7 +391,8 @@ editor_refresh_screen()
 
     // Move the cursor to the position stored in editor_conf
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", editor_conf.cy + 1,
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
+             (editor_conf.cy - editor_conf.row_offset) + 1,
              editor_conf.cx + 1);
     ab_append(&ab, buf, strlen(buf));
 
@@ -430,10 +446,11 @@ editor_move_cursor(int key)
             if (editor_conf.cx != editor_conf.screencols - 1) editor_conf.cx++;
             break;
         case ARROW_UP:
-            if (editor_conf.cy != 0) editor_conf.cy--;
+            if (editor_conf.cy < editor_conf.numrows && editor_conf.cy != 0)
+                editor_conf.cy--;
             break;
         case ARROW_DOWN:
-            if (editor_conf.cy != editor_conf.screenrows - 1) editor_conf.cy++;
+            if (editor_conf.cy < editor_conf.numrows) editor_conf.cy++;
             break;
     }
 }
@@ -478,6 +495,7 @@ init_editor()
 {
     editor_conf.cx = 0;
     editor_conf.cy = 0;
+    editor_conf.row_offset = 0;
     editor_conf.numrows = 0;
     editor_conf.rows = NULL;
 
