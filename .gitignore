@@ -1,3 +1,4 @@
 test.c
 test *.o
 zex *.o
+zex
