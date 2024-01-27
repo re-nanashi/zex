@@ -572,7 +572,9 @@ editor_process_keypress()
             editor_conf.cx = 0;
             break;
         case END_KEY:
-            editor_conf.cx = editor_conf.screencols - 1;
+            if (editor_conf.cy < editor_conf.numrows) {
+                editor_conf.cx = editor_conf.rows[editor_conf.cy].size - 1;
+            }
             break;
         case ARROW_UP:
         case ARROW_DOWN:
