@@ -24,6 +24,7 @@
 /** defines **/
 #define ZEX_VERSION         "0.0.1"
 #define INITIAL_BUFFER_SIZE 2048
+#define ZEX_TAB_STOP        4
 
 /* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
@@ -48,7 +49,9 @@ enum Modes { NORMAL, INSERT };
 
 typedef struct editor_row {
     int size;
+    int rsize;
     char *chars;
+    char *render;
 } e_row;
 
 /* @brief Editor's global state */
@@ -242,7 +245,36 @@ get_window_size(int *rows, int *cols)
         return 0;
     }
 }
+
 /* row operations */
+void
+editor_update_row(e_row *row)
+{
+    int tabs = 0;
+    int j;
+    // get the number of '\t' within the line
+    for (j = 0; j < row->size; j++)
+        if (row->chars[j] == '\t') tabs++;
+
+    free(row->render);
+    row->render = malloc(row->size + tabs * (ZEX_TAB_STOP - 1) + 1);
+
+    int idx = 0;
+    for (j = 0; j < row->size; j++) {
+        if (row->chars[j] == '\t') {
+            row->render[idx++] = ' ';
+            while (idx % ZEX_TAB_STOP != 0)
+                row->render[idx++] = ' ';
+        }
+        else {
+            row->render[idx++] = row->chars[j];
+        }
+    }
+
+    row->render[idx] = '\0';
+    row->rsize = idx;
+}
+
 void
 editor_append_row(char *s, size_t len)
 {
@@ -254,6 +286,11 @@ editor_append_row(char *s, size_t len)
     editor_conf.rows[i].chars = malloc(len + 1);
     memcpy(editor_conf.rows[i].chars, s, len);
     editor_conf.rows[i].chars[len] = '\0';
+
+    editor_conf.rows[i].rsize = 0;
+    editor_conf.rows[i].render = NULL;
+    editor_update_row(&editor_conf.rows[i]);
+
     editor_conf.numrows++;
 }
 
@@ -382,12 +419,12 @@ editor_draw_rows(struct append_buf *ab)
             }
         }
         else {
-            int len = editor_conf.rows[filerow].size - editor_conf.col_offset;
+            int len = editor_conf.rows[filerow].rsize - editor_conf.col_offset;
             if (len < 0) len = 0;
             if (len > editor_conf.screencols) len = editor_conf.screencols;
-            ab_append(ab,
-                      &editor_conf.rows[filerow].chars[editor_conf.col_offset],
-                      len);
+            ab_append(
+                ab, &editor_conf.rows[filerow].render[editor_conf.col_offset],
+                len);
         }
 
         ab_append(ab, "\x1b[K", 3); // Erase part of the current line
