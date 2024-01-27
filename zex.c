@@ -57,6 +57,7 @@ typedef struct editor_row {
 /* @brief Editor's global state */
 struct editor_config {
     int cx, cy;
+    int rx;
     int row_offset;
     int col_offset;
     int screenrows;
@@ -247,6 +248,19 @@ get_window_size(int *rows, int *cols)
 }
 
 /* row operations */
+int
+editor_row_cx_to_rx(e_row *row, int cx)
+{
+    int rx = 0;
+    for (int j = 0; j < cx; j++) {
+        if (row->chars[j] == '\t')
+            rx += (ZEX_TAB_STOP - 1) - (rx % ZEX_TAB_STOP);
+        rx++;
+    }
+
+    return rx;
+}
+
 void
 editor_update_row(e_row *row)
 {
@@ -350,6 +364,12 @@ ab_free(struct append_buf *ab)
 void
 editor_scroll()
 {
+    editor_conf.rx = 0;
+    if (editor_conf.cy < editor_conf.numrows) {
+        editor_conf.rx = editor_row_cx_to_rx(&editor_conf.rows[editor_conf.cy],
+                                             editor_conf.cx);
+    }
+
     if (editor_conf.cy < editor_conf.row_offset) {
         editor_conf.row_offset = editor_conf.cy;
     }
@@ -358,12 +378,12 @@ editor_scroll()
         editor_conf.row_offset = editor_conf.cy - editor_conf.screenrows + 1;
     }
 
-    if (editor_conf.cx < editor_conf.col_offset) {
-        editor_conf.col_offset = editor_conf.cx;
+    if (editor_conf.rx < editor_conf.col_offset) {
+        editor_conf.col_offset = editor_conf.rx;
     }
 
-    if (editor_conf.cx >= editor_conf.col_offset + editor_conf.screencols) {
-        editor_conf.col_offset = editor_conf.cx - editor_conf.screencols + 1;
+    if (editor_conf.rx >= editor_conf.col_offset + editor_conf.screencols) {
+        editor_conf.col_offset = editor_conf.rx - editor_conf.screencols + 1;
     }
 }
 
@@ -454,7 +474,7 @@ editor_refresh_screen()
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
              (editor_conf.cy - editor_conf.row_offset) + 1,
-             (editor_conf.cx - editor_conf.col_offset) + 1);
+             (editor_conf.rx - editor_conf.col_offset) + 1);
     ab_append(&ab, buf, strlen(buf));
 
     ab_append(&ab, "\x1b[?25h", 6);
@@ -569,6 +589,7 @@ init_editor()
 {
     editor_conf.cx = 0;
     editor_conf.cy = 0;
+    editor_conf.rx = 0;
     editor_conf.row_offset = 0;
     editor_conf.numrows = 0;
     editor_conf.rows = NULL;
