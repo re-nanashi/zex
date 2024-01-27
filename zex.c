@@ -181,6 +181,19 @@ editor_read_key()
         return '\x1b';
     }
     else {
+        switch (c) {
+            case 'k':
+                return ARROW_UP;
+            case 'j':
+                return ARROW_DOWN;
+            case 'h':
+                return ARROW_LEFT;
+            case 'l':
+                return ARROW_RIGHT;
+            case '0':
+                return HOME_KEY;
+        }
+
         return c;
     }
 }
@@ -461,7 +474,7 @@ editor_move_cursor(int key)
             if (editor_conf.cx != 0) editor_conf.cx--;
             break;
         case ARROW_RIGHT:
-            if (row && row->size > editor_conf.cx) editor_conf.cx++;
+            if (row && editor_conf.cx < row->size - 1) editor_conf.cx++;
             break;
         case ARROW_UP:
             if (editor_conf.cy < editor_conf.numrows && editor_conf.cy != 0)
@@ -470,6 +483,14 @@ editor_move_cursor(int key)
         case ARROW_DOWN:
             if (editor_conf.cy < editor_conf.numrows) editor_conf.cy++;
             break;
+    }
+
+    row = (editor_conf.cy >= editor_conf.numrows)
+              ? NULL
+              : &editor_conf.rows[editor_conf.cy];
+    int rowlen = row ? row->size : 0;
+    if (editor_conf.cx > rowlen) {
+        editor_conf.cx = rowlen == 0 ? rowlen : rowlen - 1;
     }
 }
 
