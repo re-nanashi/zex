@@ -307,12 +307,10 @@ editor_open(char *filename)
 
     // Loop through all the line rows in the file
     while ((linelen = getline(&line, &linecap, (FILE *)fp)) != -1) {
-        if (linelen != -1) {
-            while (linelen > 0
-                   && (line[linelen - 1] == '\n' || line[linelen - 1] == 'r'))
-                linelen--;
-            editor_append_row(line, linelen);
-        }
+        while (linelen > 0
+               && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
+            linelen--;
+        editor_append_row(line, linelen);
     }
 
     free(line);
