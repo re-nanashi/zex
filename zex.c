@@ -563,6 +563,16 @@ editor_process_keypress()
             break;
         case PAGE_UP:
         case PAGE_DOWN: {
+            if (c == PAGE_UP) {
+                editor_conf.cy = editor_conf.row_offset;
+            }
+            else if (c == PAGE_DOWN) {
+                editor_conf.cy =
+                    editor_conf.row_offset + editor_conf.screenrows - 1;
+                if (editor_conf.cy > editor_conf.numrows)
+                    editor_conf.cy = editor_conf.numrows;
+            }
+
             int times = editor_conf.screenrows;
             while (times--) {
                 editor_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
