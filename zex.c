@@ -64,6 +64,7 @@ struct editor_config {
     int screencols;
     int numrows;
     e_row *rows;
+    char *filename;
     struct termios orig_termios;
 };
 struct editor_config editor_conf;
@@ -219,6 +220,8 @@ get_cursor_position(int *rows, int *cols)
 
     if (buf[0] != '\x1b' || buf[1] != '[') return -1;
     if (sscanf(&buf[2], "%d;%d", rows, cols) != 2) return -1;
+    // Subtract 2 from row to give space for status bar and cmd line
+    *rows -= 2;
 
     editor_read_key();
 
@@ -241,7 +244,8 @@ get_window_size(int *rows, int *cols)
         return get_cursor_position(rows, cols);
     }
     else {
-        *rows = ws.ws_row;
+        // Subtract 2 from rows to give space for status bar and cmd line
+        *rows = ws.ws_row - 2;
         *cols = ws.ws_col;
         return 0;
     }
@@ -312,6 +316,9 @@ editor_append_row(char *s, size_t len)
 void
 editor_open(char *filename)
 {
+    free(editor_conf.filename);
+    editor_conf.filename = strdup(filename);
+
     FILE *fp = fopen(filename, "r");
     if (!fp) die("fopen");
 
@@ -446,11 +453,34 @@ editor_draw_rows(struct append_buf *ab)
         }
 
         ab_append(ab, "\x1b[K", 3); // Erase part of the current line
+        ab_append(ab, "\r\n", 2);
+    }
+}
 
-        if (y < editor_conf.screenrows - 1) {
-            ab_append(ab, "\r\n", 2);
+void
+editor_draw_status_bar(struct append_buf *ab)
+{
+    ab_append(ab, "\x1b[7m", 4);
+    char status[80], rstatus[80];
+    int len =
+        snprintf(status, sizeof(status), "%.20s - %d lines",
+                 editor_conf.filename ? editor_conf.filename : "[No Name]",
+                 editor_conf.numrows);
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", editor_conf.cy + 1,
+                        editor_conf.numrows);
+    if (len > editor_conf.screencols) len = editor_conf.screencols;
+    ab_append(ab, status, len);
+    while (len < editor_conf.screencols) {
+        if (editor_conf.screencols - len == rlen) {
+            ab_append(ab, rstatus, rlen);
+            break;
+        }
+        else {
+            ab_append(ab, " ", 1);
+            len++;
         }
     }
+    ab_append(ab, "\x1b[m", 3);
 }
 
 void
@@ -469,8 +499,8 @@ editor_refresh_screen()
     ab_append(&ab, "\x1b[H", 3); // reposition cursor to top
 
     editor_draw_rows(&ab);
+    editor_draw_status_bar(&ab);
 
-    // Move the cursor to the position stored in editor_conf
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
              (editor_conf.cy - editor_conf.row_offset) + 1,
@@ -605,6 +635,7 @@ init_editor()
     editor_conf.row_offset = 0;
     editor_conf.numrows = 0;
     editor_conf.rows = NULL;
+    editor_conf.filename = NULL;
 
     if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
         == -1)
