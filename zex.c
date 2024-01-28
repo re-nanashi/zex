@@ -566,7 +566,7 @@ editor_move_cursor(int key)
                 editor_conf.cy--;
             break;
         case ARROW_DOWN:
-            if (editor_conf.cy < editor_conf.numrows) editor_conf.cy++;
+            if (editor_conf.cy < editor_conf.numrows - 1) editor_conf.cy++;
             break;
     }
 
@@ -600,7 +600,7 @@ editor_process_keypress()
                 editor_conf.cy =
                     editor_conf.row_offset + editor_conf.screenrows - 1;
                 if (editor_conf.cy > editor_conf.numrows)
-                    editor_conf.cy = editor_conf.numrows;
+                    editor_conf.cy = editor_conf.numrows - 1;
             }
 
             int times = editor_conf.screenrows;
