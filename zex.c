@@ -17,6 +17,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <pthread.h>
@@ -65,6 +66,8 @@ struct editor_config {
     int numrows;
     e_row *rows;
     char *filename;
+    char statusmsg[80];
+    time_t statusmsg_time;
     struct termios orig_termios;
 };
 struct editor_config editor_conf;
@@ -481,6 +484,17 @@ editor_draw_status_bar(struct append_buf *ab)
         }
     }
     ab_append(ab, "\x1b[m", 3);
+    ab_append(ab, "\r\n", 2);
+}
+
+void
+editor_draw_message_bar(struct append_buf *ab)
+{
+    ab_append(ab, "\x1b[K", 3);
+    int msglen = strlen(editor_conf.statusmsg);
+    if (msglen > editor_conf.screencols) msglen = editor_conf.screencols;
+    if (msglen && time(NULL) - editor_conf.statusmsg_time < 5)
+        ab_append(ab, editor_conf.statusmsg, msglen);
 }
 
 void
@@ -500,6 +514,7 @@ editor_refresh_screen()
 
     editor_draw_rows(&ab);
     editor_draw_status_bar(&ab);
+    editor_draw_message_bar(&ab);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
@@ -511,6 +526,16 @@ editor_refresh_screen()
 
     write(STDOUT_FILENO, ab.b, ab.len);
     ab_free(&ab);
+}
+
+void
+editor_set_status_message(const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(editor_conf.statusmsg, sizeof(editor_conf.statusmsg), fmt, ap);
+    va_end(ap);
+    editor_conf.statusmsg_time = time(NULL);
 }
 
 /* @brief Handle screen resolution changes */
@@ -636,6 +661,8 @@ init_editor()
     editor_conf.numrows = 0;
     editor_conf.rows = NULL;
     editor_conf.filename = NULL;
+    editor_conf.statusmsg[0] = '\0';
+    editor_conf.statusmsg_time = 0;
 
     if (get_window_size(&editor_conf.screenrows, &editor_conf.screencols)
         == -1)
@@ -662,6 +689,8 @@ main(int argc, char *argv[])
         die("pthread_detach");
         return 1;
     }
+
+    editor_set_status_message("HELP: Ctrl-Q = quit");
 
     while (1) {
         editor_refresh_screen();
