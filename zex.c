@@ -23,9 +23,8 @@
 #include <pthread.h>
 
 /** defines **/
-#define ZEX_VERSION         "0.0.1"
-#define INITIAL_BUFFER_SIZE 2048
-#define ZEX_TAB_STOP        4
+#define ZEX_VERSION  "0.0.1"
+#define ZEX_TAB_STOP 4
 
 /* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
