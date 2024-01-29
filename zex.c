@@ -11,6 +11,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,14 +24,16 @@
 #include <pthread.h>
 
 /** defines **/
-#define ZEX_VERSION  "0.0.1"
-#define ZEX_TAB_STOP 4
+#define ZEX_VERSION    "0.0.1"
+#define ZEX_TAB_STOP   4
+#define ZEX_QUIT_TIMES 2
 
 /* @brief CTRL + k(key) macro */
 #define CTRL_KEY(k) ((k)&0x1f)
 #define IS_ZERO(x)  (x == 0)
 
 enum EditorKeys {
+    BACKSPACE = 127,
     ARROW_UP = 1000,
     ARROW_DOWN,
     ARROW_RIGHT,
@@ -64,6 +67,7 @@ struct editor_config {
     int screencols;
     int numrows;
     e_row *rows;
+    int dirty;
     char *filename;
     char statusmsg[80];
     time_t statusmsg_time;
@@ -312,6 +316,7 @@ editor_append_row(char *s, size_t len)
     editor_update_row(&editor_conf.rows[i]);
 
     editor_conf.numrows++;
+    editor_conf.dirty++;
 }
 
 void
@@ -324,6 +329,17 @@ editor_row_insert_ch(e_row *row, int at, int c)
     row->size++;
     row->chars[at] = c;
     editor_update_row(row);
+    editor_conf.dirty++;
+}
+
+void
+editor_row_del_ch(e_row *row, int at)
+{
+    if (at < 0 || at >= row->size) return;
+    memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+    row->size--;
+    editor_update_row(row);
+    editor_conf.dirty++;
 }
 
 /* editor operations */
@@ -334,7 +350,42 @@ editor_insert_ch(int c)
     editor_conf.cx++;
 }
 
+// TODO: We can't get past the last ch in a row. Implement modes
+void
+editor_del_ch()
+{
+    e_row *row = &editor_conf.rows[editor_conf.cy];
+
+    if (editor_conf.cx > 0) {
+        editor_row_del_ch(&editor_conf.rows[editor_conf.cy], editor_conf.cx);
+        editor_conf.cx--;
+    }
+}
+
 /* file i/o */
+char *
+editor_rows_to_string(int *buflen)
+{
+    int totlen = 0;
+    int j;
+    for (j = 0; j < editor_conf.numrows; j++)
+        totlen += editor_conf.rows[j].size + 1;
+    *buflen = totlen;
+
+    char *buf = malloc(totlen);
+    char *tmp = buf;
+    for (j = 0; j < editor_conf.numrows; j++) {
+        memcpy(tmp, editor_conf.rows[j].chars, editor_conf.rows[j].size);
+        tmp += editor_conf.rows[j].size;
+        *tmp = '\n';
+        tmp++;
+    }
+
+    // we return the initial address of the buffer
+    // to be freed after use
+    return buf;
+}
+
 void
 editor_open(char *filename)
 {
@@ -358,6 +409,39 @@ editor_open(char *filename)
 
     free(line);
     fclose(fp);
+    editor_conf.dirty = 0;
+}
+
+/* @brief Functions prototype that sets status message */
+void editor_set_status_message(const char *fmt, ...);
+
+void
+editor_save()
+{
+    if (editor_conf.filename == NULL) return;
+
+    int len;
+    char *buf = editor_rows_to_string(&len);
+
+    int fd = open(editor_conf.filename, O_RDWR | O_CREAT, 0644);
+    // error handling
+    if (fd != -1) {
+        if (ftruncate(fd, len) != -1) {
+            if (write(fd, buf, len) == len) {
+                close(fd);
+                free(buf);
+                editor_conf.dirty = 0;
+                editor_set_status_message("%d bytes written to disk", len);
+                return;
+            }
+        }
+        close(fd);
+    }
+
+    // free buffer
+    free(buf);
+    editor_set_status_message("File cannot be saved. I/O error: %s",
+                              strerror(errno));
 }
 
 /* append buffer */
@@ -485,9 +569,9 @@ editor_draw_status_bar(struct append_buf *ab)
     ab_append(ab, "\x1b[7m", 4);
     char status[80], rstatus[80];
     int len =
-        snprintf(status, sizeof(status), "%.20s - %d lines",
+        snprintf(status, sizeof(status), "%.20s - %d lines %s",
                  editor_conf.filename ? editor_conf.filename : "[No Name]",
-                 editor_conf.numrows);
+                 editor_conf.numrows, editor_conf.dirty ? "(modified)" : "");
     int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", editor_conf.cy + 1,
                         editor_conf.numrows);
     if (len > editor_conf.screencols) len = editor_conf.screencols;
@@ -626,15 +710,50 @@ editor_move_cursor(int key)
 void
 editor_process_keypress()
 {
+    static int quit_times = ZEX_QUIT_TIMES;
+
     int c = editor_read_key();
 
     switch (c) {
+        case '\r':
+            /* TODO: Backspace */
+            break;
+
         case CTRL_KEY('q'):
+            if (editor_conf.dirty && quit_times > 0) {
+                editor_set_status_message("Warning: File has unsaved changes. "
+                                          "Press CTRL_Q %d more time to quit.",
+                                          quit_times);
+                quit_times--;
+                return;
+            }
             write(STDOUT_FILENO, "\x1b[2J",
                   4); // clears the screen; check VT100
             write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
             exit(0);
             break;
+
+        case CTRL_KEY('s'):
+            editor_save();
+            break;
+
+        case HOME_KEY:
+            editor_conf.cx = 0;
+            break;
+
+        case END_KEY:
+            if (editor_conf.cy < editor_conf.numrows) {
+                editor_conf.cx = editor_conf.rows[editor_conf.cy].size - 1;
+            }
+            break;
+
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+        case DEL_KEY:
+            if (c == DEL_KEY) editor_move_cursor(ARROW_RIGHT);
+            editor_del_ch();
+            break;
+
         case PAGE_UP:
         case PAGE_DOWN: {
             if (c == PAGE_UP) {
@@ -652,23 +771,24 @@ editor_process_keypress()
                 editor_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
             }
         } break;
-        case HOME_KEY:
-            editor_conf.cx = 0;
-            break;
-        case END_KEY:
-            if (editor_conf.cy < editor_conf.numrows) {
-                editor_conf.cx = editor_conf.rows[editor_conf.cy].size - 1;
-            }
-            break;
+
         case ARROW_UP:
         case ARROW_DOWN:
         case ARROW_RIGHT:
         case ARROW_LEFT:
             editor_move_cursor(c);
             break;
+
+        case CTRL_KEY('l'):
+        case '\x1b':
+            break;
+
         default:
             editor_insert_ch(c);
     }
+
+    // reset if another key is pressed
+    quit_times = ZEX_QUIT_TIMES;
 }
 
 /** init **/
@@ -681,6 +801,7 @@ init_editor()
     editor_conf.row_offset = 0;
     editor_conf.numrows = 0;
     editor_conf.rows = NULL;
+    editor_conf.dirty = 0;
     editor_conf.filename = NULL;
     editor_conf.statusmsg[0] = '\0';
     editor_conf.statusmsg_time = 0;
