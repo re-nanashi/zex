@@ -314,6 +314,26 @@ editor_append_row(char *s, size_t len)
     editor_conf.numrows++;
 }
 
+void
+editor_row_insert_ch(e_row *row, int at, int c)
+{
+    if (at < 0 || at > row->size) at = row->size;
+    row->chars =
+        realloc(row->chars, row->size + 2); // +1 for new char; +1 for null
+    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    row->size++;
+    row->chars[at] = c;
+    editor_update_row(row);
+}
+
+/* editor operations */
+void
+editor_insert_ch(int c)
+{
+    editor_row_insert_ch(&editor_conf.rows[editor_conf.cy], editor_conf.cx, c);
+    editor_conf.cx++;
+}
+
 /* file i/o */
 void
 editor_open(char *filename)
@@ -646,6 +666,8 @@ editor_process_keypress()
         case ARROW_LEFT:
             editor_move_cursor(c);
             break;
+        default:
+            editor_insert_ch(c);
     }
 }
 
