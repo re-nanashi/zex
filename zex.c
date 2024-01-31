@@ -300,20 +300,23 @@ editor_update_row(e_row *row)
 }
 
 void
-editor_append_row(char *s, size_t len)
+editor_insert_row(int at, char *s, size_t len)
 {
+    if (at < 0 || at > editor_conf.numrows) return;
+
     editor_conf.rows =
         realloc(editor_conf.rows, sizeof(e_row) * (editor_conf.numrows + 1));
+    memmove(&editor_conf.rows[at + 1], &editor_conf.rows[at],
+            sizeof(e_row) * (editor_conf.numrows - at));
 
-    int i = editor_conf.numrows;
-    editor_conf.rows[i].size = len;
-    editor_conf.rows[i].chars = malloc(len + 1);
-    memcpy(editor_conf.rows[i].chars, s, len);
-    editor_conf.rows[i].chars[len] = '\0';
+    editor_conf.rows[at].size = len;
+    editor_conf.rows[at].chars = malloc(len + 1);
+    memcpy(editor_conf.rows[at].chars, s, len);
+    editor_conf.rows[at].chars[len] = '\0';
 
-    editor_conf.rows[i].rsize = 0;
-    editor_conf.rows[i].render = NULL;
-    editor_update_row(&editor_conf.rows[i]);
+    editor_conf.rows[at].rsize = 0;
+    editor_conf.rows[at].render = NULL;
+    editor_update_row(&editor_conf.rows[at]);
 
     editor_conf.numrows++;
     editor_conf.dirty++;
@@ -383,6 +386,25 @@ editor_insert_ch(int c)
     editor_conf.cx++;
 }
 
+void
+editor_insert_nline()
+{
+    if (editor_conf.cx == 0) {
+        editor_insert_row(editor_conf.cy, "", 0);
+    }
+    else {
+        e_row *row = &editor_conf.rows[editor_conf.cy];
+        editor_insert_row(editor_conf.cy + 1, &row->chars[editor_conf.cx],
+                          row->size - editor_conf.cx);
+        row = &editor_conf.rows[editor_conf.cy];
+        row->size = editor_conf.cx;
+        row->chars[row->size] = '\0';
+        editor_update_row(row);
+    }
+    editor_conf.cy++;
+    editor_conf.cx = 0;
+}
+
 // TODO: We can't get past the last ch in a row. Implement modes
 void
 editor_del_ch()
@@ -450,7 +472,7 @@ editor_open(char *filename)
         while (linelen > 0
                && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
             linelen--;
-        editor_append_row(line, linelen);
+        editor_insert_row(editor_conf.numrows, line, linelen);
     }
 
     free(line);
@@ -762,7 +784,7 @@ editor_process_keypress()
 
     switch (c) {
         case '\r':
-            /* TODO: Backspace */
+            editor_insert_nline();
             break;
 
         case CTRL_KEY('q'):
