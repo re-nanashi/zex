@@ -320,6 +320,24 @@ editor_append_row(char *s, size_t len)
 }
 
 void
+editor_free_row(e_row *row)
+{
+    free(row->render);
+    free(row->chars);
+}
+
+void
+editor_del_row(int at)
+{
+    if (at < 0 || at >= editor_conf.numrows) return;
+    editor_free_row(&editor_conf.rows[at]);
+    memmove(&editor_conf.rows[at], &editor_conf.rows[at + 1],
+            sizeof(e_row) * (editor_conf.numrows - at - 1));
+    editor_conf.numrows--;
+    editor_conf.dirty++;
+}
+
+void
 editor_row_insert_ch(e_row *row, int at, int c)
 {
     if (at < 0 || at > row->size) at = row->size;
@@ -328,6 +346,17 @@ editor_row_insert_ch(e_row *row, int at, int c)
     memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
     row->size++;
     row->chars[at] = c;
+    editor_update_row(row);
+    editor_conf.dirty++;
+}
+
+void
+editor_row_append_str(e_row *row, char *s, size_t len)
+{
+    row->chars = realloc(row->chars, row->size + len + 1);
+    memcpy(&row->chars[row->size], s, len);
+    row->size += len;
+    row->chars[row->size] = '\0';
     editor_update_row(row);
     editor_conf.dirty++;
 }
@@ -346,6 +375,10 @@ editor_row_del_ch(e_row *row, int at)
 void
 editor_insert_ch(int c)
 {
+    // TODO:
+    // if (editor_conf.cy == editor_conf.numrows) {
+    //     editor_append_row("", 0);
+    // }
     editor_row_insert_ch(&editor_conf.rows[editor_conf.cy], editor_conf.cx, c);
     editor_conf.cx++;
 }
@@ -354,11 +387,24 @@ editor_insert_ch(int c)
 void
 editor_del_ch()
 {
-    e_row *row = &editor_conf.rows[editor_conf.cy];
+    // can't use since cursor is exactly at the last row
+    // if (editor_conf.cy == editor_conf.numrows) return;
+    if (editor_conf.cx == 0 && editor_conf.cy == 0) return;
 
+    e_row *row = &editor_conf.rows[editor_conf.cy];
     if (editor_conf.cx > 0) {
         editor_row_del_ch(&editor_conf.rows[editor_conf.cy], editor_conf.cx);
         editor_conf.cx--;
+    }
+    else {
+        // case where cursor is at the beginning of a line
+        editor_conf.cx = editor_conf.rows[editor_conf.cy - 1]
+                             .size; // put the cursor at the eol
+        // append the string to the previous string
+        editor_row_append_str(&editor_conf.rows[editor_conf.cy - 1],
+                              row->chars, row->size);
+        editor_del_row(editor_conf.cy);
+        editor_conf.cy--;
     }
 }
 
