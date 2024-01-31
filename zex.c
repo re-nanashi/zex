@@ -640,8 +640,10 @@ editor_draw_status_bar(struct append_buf *ab)
         snprintf(status, sizeof(status), "%.20s - %d lines %s",
                  editor_conf.filename ? editor_conf.filename : "[No Name]",
                  editor_conf.numrows, editor_conf.dirty ? "(modified)" : "");
-    int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", editor_conf.cy + 1,
-                        editor_conf.numrows);
+    int rlen =
+        snprintf(rstatus, sizeof(rstatus), "%d/%d:%d", editor_conf.cy + 1,
+                 editor_conf.numrows, editor_conf.cx + 1);
+
     if (len > editor_conf.screencols) len = editor_conf.screencols;
     ab_append(ab, status, len);
     while (len < editor_conf.screencols) {
@@ -770,7 +772,7 @@ editor_move_cursor(int key)
               ? NULL
               : &editor_conf.rows[editor_conf.cy];
     int rowlen = row ? row->size : 0;
-    if (editor_conf.cx > rowlen) {
+    if (editor_conf.cx >= rowlen) {
         editor_conf.cx = rowlen == 0 ? rowlen : rowlen - 1;
     }
 }
