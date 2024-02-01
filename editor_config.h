@@ -42,6 +42,8 @@ typedef struct editor_config {
     int numrows;
     /** array of all rows with text */
     erow_t *rows;
+    /** changes counter */
+    int dirty;
     /** filename str */
     char *filename;
     /** status message str */
