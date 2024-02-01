@@ -4,24 +4,11 @@
 #include <unistd.h>
 
 #include "editor_config.h"
+#include "file_io.h"
+#include "logger.h"
 
 /* @brief Editor configurations */
 econf_t econfig;
-
-/**
- * @brief Log err message then exit program
- *
- * @param s Error message string
- */
-void
-die(const char *s)
-{
-    write(STDOUT_FILENO, "\x1b[2J", 4); // clears the screen; refer to VT100
-    write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
-
-    perror(s);
-    exit(1);
-}
 
 /**
  * @brief Disable raw mode/non-canonical mode
@@ -87,8 +74,6 @@ get_cursor_pos(int *rows, int *cols)
     if (sscanf(&buf[2], "%d:%d", rows, cols) != 2) return -1;
     *rows -= 2; // subtract 2 to give space to  status bar and cmd line
 
-    editor_read_key();
-
     return -1;
 }
 
@@ -117,7 +102,7 @@ get_window_sz(int *rows, int *cols)
     }
 }
 
-/* @brief Initialize editor configurations */
+/* @brief Initialize Zex editor configurations */
 void
 init_editor()
 {
@@ -138,9 +123,18 @@ init_editor()
 }
 
 int
-main(int argc, char *argvp[])
+main(int argc, char *argv[])
 {
     enable_raw_mode();
+    init_editor();
+
+    // If a file to edit is passed
+    if (argc >= 2) {
+        editor_fopen(&econfig, argv[1]);
+    }
+
+    // Create new thread for handling terminal resolution changes
+    pthread_t thread;
 
     return 0;
 }
