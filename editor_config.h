@@ -7,8 +7,6 @@
 #ifndef EDITOR_CONFIG_H
 #define EDITOR_CONFIG_H
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <termios.h>
 #include <time.h>
 
