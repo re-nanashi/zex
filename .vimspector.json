@@ -5,6 +5,7 @@
       "configuration": {
         "request": "launch",
         "program": "${workspaceRoot}/zex",
+        "args": ["${workspaceRoot}/test.c"],
         "cwd": "${workspaceRoot}",
         "stopAtEntry": true,
         "externalConsole": false,
