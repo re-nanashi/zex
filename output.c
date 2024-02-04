@@ -8,6 +8,7 @@
 #include "output.h"
 #include "terminal.h"
 #include "logger.h"
+#include "editor_operations.h"
 
 void
 write_to_abuf(a_buf *ab, const char *s, int len)
@@ -36,7 +37,7 @@ editor_scroll_handler()
 
     if (econfig.cy < econfig.numrows) {
         econfig.rx =
-            editor_row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
+            row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
     }
 
     if (econfig.rx < econfig.col_offset) {
@@ -95,15 +96,12 @@ editor_draw_rows(struct append_buf *ab)
 
         // Length of text file does not exceed editor height
         if (filerow >= econfig.numrows) {
-            if (econfig.numrows == 0) {
-                if (y == welcome_message_row) {
-                    editor_draw_welcome_message(ab, "ZEX editor v%s",
-                                                ZEX_VERSION);
-                }
-                else if (y == welcome_message_row + 2) {
-                    editor_draw_welcome_message(
-                        ab, "ZEX is open source and freely distributable");
-                }
+            if (econfig.numrows == 0 && y == welcome_message_row) {
+                editor_draw_welcome_message(ab, "ZEX editor v%s", ZEX_VERSION);
+            }
+            else if (econfig.numrows == 0 && y == welcome_message_row + 2) {
+                editor_draw_welcome_message(
+                    ab, "ZEX is open source and freely distributable");
             }
             else {
                 write_to_abuf(ab, "~", 1);
@@ -186,7 +184,7 @@ editor_refresh_screen()
     editor_scroll_handler();
 
     // Get new terminal size
-    if (get_window_sz(&econfig.screenrows, &econfig.screencols) != -1)
+    if (get_window_sz(&econfig.screenrows, &econfig.screencols) == -1)
         die("get_window_sz");
 
     // Initialize buffer
@@ -201,12 +199,12 @@ editor_refresh_screen()
 
     char buf[32];
     // Reposition cursor with offset values
-    snprintf(buf, sizeof(buf), "\x1b[%d:%dH",
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
              (econfig.cy - econfig.row_offset) + 1,
-             (econfig.cx - econfig.col_offset) + 1);
+             (econfig.rx - econfig.col_offset) + 1);
     write_to_abuf(&ab, buf, strlen(buf));
 
-    write_to_abuf(&ab, "\x1b?25h", 6); // show cursor; VT510
+    write_to_abuf(&ab, "\x1b[?25h", 6); // show cursor; VT510
 
     // Draw buffer to terminal
     write(STDOUT_FILENO, ab.b, ab.len);
@@ -223,8 +221,8 @@ thread_refresh_screen()
     sleep_time.tv_nsec = 10000000;
 
     while (1) {
-        if (get_window_sz(&econfig.screenrows, &econfig.screencols) != -1)
-            die("get_window_sz");
+        int result = get_window_sz(&econfig.screenrows, &econfig.screencols);
+        if (result == -1) die("get_window_sz");
 
         if (prev_num_rows != econfig.screenrows
             || prev_num_cols != econfig.screencols)
