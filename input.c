@@ -12,6 +12,8 @@
 #include "output.h"
 #include "logger.h"
 #include "config.h"
+#include "editor_operations.h"
+#include "file_io.h"
 
 /* @brief Internal macros */
 #define ZEX_QUIT_TIMES 2
@@ -230,7 +232,7 @@ editor_process_keypress()
         case CTRL_KEY('h'):
         case DEL_KEY:
             if (c == DEL_KEY) editor_move_cursor(ARROW_RIGHT);
-            econfig();
+            editor_del_ch();
             break;
 
         case PAGE_UP:
