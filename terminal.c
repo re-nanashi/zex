@@ -1,9 +1,11 @@
+#include <termio.h>
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "config.h"
 #include "terminal.h"
 #include "logger.h"
 
