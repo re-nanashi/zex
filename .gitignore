@@ -2,3 +2,4 @@ test.c
 test *.o
 zex *.o
 zex
+zex.old.c
