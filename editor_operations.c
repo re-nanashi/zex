@@ -141,10 +141,10 @@ row_del_ch(erow_t *row, int at)
 void
 editor_insert_ch(int c)
 {
-    // TODO:
-    // if (editor_conf.cy == editor_conf.numrows) {
-    //     editor_append_row("", 0);
-    // }
+    if (econfig.cy == econfig.numrows) {
+        insert_row(econfig.cy, "", 0);
+    }
+
     row_insert_ch(&econfig.rows[econfig.cy], econfig.cx, c);
     econfig.cx++;
 }
@@ -171,8 +171,7 @@ editor_insert_nline()
 void
 editor_del_ch()
 {
-    // TODO: Can't use this since cursor is exactly at the last row
-    // if (econfig.cy == econfig.numrows) return;
+    if (econfig.cy == econfig.numrows) return;
     if (econfig.cx == 0 && econfig.cy == 0) return; // no char to delete
 
     erow_t *row = &econfig.rows[econfig.cy];
