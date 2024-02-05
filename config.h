@@ -40,6 +40,8 @@ typedef struct editor_config {
     int numrows;
     /* array of all rows with text */
     erow_t *rows;
+    /* editor mode */
+    enum { NORMAL, INSERT, VISUAL } mode;
     /* changes counter */
     int dirty;
     /* filename str */

@@ -20,6 +20,7 @@ init_editor()
     econfig.col_offset = 0;
     econfig.numrows = 0;
     econfig.rows = NULL;
+    econfig.mode = NORMAL;
     econfig.dirty = 0;
     econfig.filename = NULL;
     econfig.statusmsg[0] = '\0';
