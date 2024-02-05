@@ -8,10 +8,10 @@ int
 row_convert_cx_to_rx(erow_t *row, int cx)
 {
     int rx = 0;
+
     for (int j = 0; j < cx; j++) {
         if (row->chars[j] == '\t')
             rx += (ZEX_TAB_STOP - 1) - (rx % ZEX_TAB_STOP);
-
         rx++;
     }
 
