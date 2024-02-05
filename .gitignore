@@ -3,3 +3,5 @@ test *.o
 zex *.o
 zex
 zex.old.c
+core
+.notes
