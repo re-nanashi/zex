@@ -181,7 +181,7 @@ editor_move_cursor(int key)
 typedef enum ShiftFlag { SHIFT, UNSHIFT } sflag_t;
 
 void
-editor_move_cursor_forward_by_word(sflag_t flag)
+cursor_jump_forward_start_word(sflag_t flag)
 {
     // Check if there is a text
     erow_t *row =
@@ -190,15 +190,18 @@ editor_move_cursor_forward_by_word(sflag_t flag)
 
     switch (flag) {
         case SHIFT:
+            // Go to the next space/blank ch
             while (!isblank(row->render[*cx]) && *cx < row->size)
                 (*cx)++;
 
+            // Go to the next non-space/blank ch
             while (isblank(row->render[*cx]) && *cx < row->size) {
                 (*cx)++;
             }
 
             break;
         case UNSHIFT:
+            // TODO: Include "_" underscore ch in checks
             // Skip succeeding alnum ch if 'w' is pressed while ch under cursor
             // is alnum
             if (isalnum(row->render[*cx])) {
@@ -241,6 +244,104 @@ editor_move_cursor_forward_by_word(sflag_t flag)
 }
 
 void
+cursor_jump_forward_end_word(sflag_t flag)
+{
+    // Check if there is a text
+    erow_t *row =
+        (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
+    int *cx = &econfig.cx;
+
+    switch (flag) {
+        case SHIFT:
+            // TODO:
+            // Go to the next space/blank ch
+            while (!isblank(row->render[*cx]) && *cx < row->size)
+                (*cx)++;
+
+            // Go to the next non-space/blank ch
+            while (isblank(row->render[*cx]) && *cx < row->size) {
+                (*cx)++;
+            }
+
+            break;
+        case UNSHIFT:
+            // TODO: Include "_" underscore ch in checks
+            // Check if next ch is different type than the current ch
+            if ((isalnum(row->render[*cx]) && !isalnum(row->render[*cx + 1]))
+                || (ispunct(row->render[*cx])
+                    && !ispunct(row->render[*cx + 1])))
+            {
+                // Go to the next word
+                (*cx)++;
+            }
+
+            // Go to the end of the word
+            if (isalnum(row->render[*cx])) {
+                while (isalnum(row->render[*cx]))
+                    (*cx)++;
+                (*cx)--;
+            }
+            // Go to the end of the word
+            else if (ispunct(row->render[*cx])) {
+                while (ispunct(row->render[*cx]))
+                    (*cx)++;
+                (*cx)--;
+            }
+
+            // Skip blank characters then go to the end of the next word
+            if (isblank(row->render[*cx])) {
+                while (isblank(row->render[*cx]))
+                    (*cx)++;
+
+                if (isalnum(row->render[*cx])) {
+                    while (isalnum(row->render[*cx]))
+                        (*cx)++;
+                    (*cx)--;
+                }
+
+                if (ispunct(row->render[*cx])) {
+                    while (ispunct(row->render[*cx]))
+                        (*cx)++;
+                    (*cx)--;
+                }
+            }
+
+            break;
+    }
+
+    // Stop cursor from moving forward
+    if (econfig.cy == econfig.numrows - 1 && (*cx) == row->size) {
+        (*cx)--;
+        return;
+    }
+
+    // Move to cursor to the next line if end of line
+    if (*cx == row->size || (row->size == 0 && *cx == 0)) {
+        row = (econfig.cy == econfig.numrows - 1) ? NULL
+                                                  : &econfig.rows[++econfig.cy];
+        if (row) {
+            (*cx) = 0;
+            // Find the first non-blank character
+            while (isblank(row->render[*cx]))
+                (*cx)++;
+
+            // Go to the end of the first non-blank string
+            if (isalnum(row->render[*cx])) {
+                while (isalnum(row->render[*cx]))
+                    (*cx)++;
+                (*cx)--;
+            }
+
+            if (ispunct(row->render[*cx])) {
+                while (ispunct(row->render[*cx]))
+                    (*cx)++;
+                (*cx)--;
+            }
+        }
+    }
+}
+
+void
 process_key_normal(int c)
 {
     switch (c) {
@@ -261,13 +362,17 @@ process_key_normal(int c)
         case '0':
             econfig.cx = 0;
             break;
-        // Move cursor to the first character of a word
+        // Jump by start of words
         case 'w':
-            editor_move_cursor_forward_by_word(UNSHIFT);
+            cursor_jump_forward_start_word(UNSHIFT);
             break;
-
+        // Jump by words
         case 'W':
-            editor_move_cursor_forward_by_word(SHIFT);
+            cursor_jump_forward_start_word(SHIFT);
+            break;
+        // Jump by end of words
+        case 'e':
+            cursor_jump_forward_end_word(UNSHIFT);
             break;
 
         // Temp default
