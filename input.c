@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "input.h"
 #include "output.h"
@@ -18,7 +19,6 @@
 /* @brief Internal macros */
 #define ZEX_QUIT_TIMES 2
 #define CTRL_KEY(k)    ((k)&0x1f)
-
 enum EditorKeys {
     BACKSPACE = 127,
     ARROW_UP = 1000,
@@ -102,18 +102,6 @@ editor_read_key()
         return '\x1b';
     }
     else {
-        switch (c) {
-            case 'k':
-                return ARROW_UP;
-            case 'j':
-                return ARROW_DOWN;
-            case 'h':
-                return ARROW_LEFT;
-            case 'l':
-                return ARROW_RIGHT;
-            case '0':
-                return HOME_KEY;
-        }
 
         return c;
     }
@@ -183,7 +171,90 @@ editor_move_cursor(int key)
     row = (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
     int rowlen = row ? row->size : 0;
     if (econfig.cx >= rowlen) {
+        // If row length is zero, put cx at the start of line (cx = 0)
+        // Else, put cursor at the end character
         econfig.cx = rowlen == 0 ? rowlen : rowlen - 1;
+    }
+}
+
+void
+editor_move_cursor_by_word()
+{
+    // Check if there is a text
+    erow_t *row =
+        (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
+
+    int *cx = &econfig.cx;
+    // Skip succeeding alnum ch if 'w' is pressed while ch under cursor is alnum
+    if (isalnum(row->render[*cx])) {
+        while (isalnum(row->render[*cx]))
+            (*cx)++;
+    }
+    // Skip succeeding punct ch if 'w' is pressed while ch under cursor is punct
+    else if (ispunct(row->render[*cx])) {
+        while (ispunct(row->render[*cx]))
+            (*cx)++;
+    }
+
+    // Skip blank characters
+    if (isblank(row->render[*cx])) {
+        while (isblank(row->render[*cx]))
+            (*cx)++;
+    }
+
+    // Stop cursor from moving forward
+    if (econfig.cy == econfig.numrows - 1 && (*cx) == row->size) {
+        (*cx)--;
+        return;
+    }
+
+    // Move to cursor to the next line if end of line
+    if (*cx == row->size || (row->size == 0 && *cx == 0)) {
+        row = (econfig.cy == econfig.numrows - 1) ? NULL
+                                                  : &econfig.rows[++econfig.cy];
+        if (row) {
+            (*cx) = 0;
+            // Find the first non-blank character
+            while (isblank(row->render[*cx]))
+                (*cx)++;
+        }
+    }
+}
+
+void
+process_key_normal(int c)
+{
+    switch (c) {
+        // Movement keys
+        // Basic Movement
+        case 'k':
+        case 'j':
+        case 'h':
+        case 'l': {
+            int key;
+            if (c == 'k') key = ARROW_UP;
+            if (c == 'j') key = ARROW_DOWN;
+            if (c == 'h') key = ARROW_LEFT;
+            if (c == 'l') key = ARROW_RIGHT;
+            editor_move_cursor(key);
+        } break;
+        // Move cursor to the start of the line
+        case '0':
+            econfig.cx = 0;
+            break;
+        // Move cursor to the first character of a word
+        case 'w':
+            editor_move_cursor_by_word();
+            break;
+
+        // Temp default
+        default:
+            write(STDOUT_FILENO, "\x1b[2J",
+                  4); // clears the screen; check VT100
+            write(STDOUT_FILENO, "\x1b[H",
+                  3); // reposition cursor to top
+            exit(0);
+            break;
     }
 }
 
@@ -195,76 +266,88 @@ editor_process_keypress()
 
     int c = editor_read_key();
 
-    switch (c) {
-        case '\r':
-            editor_insert_nline();
+    switch (econfig.mode) {
+        case NORMAL:
+            process_key_normal(c);
             break;
-
-        case CTRL_KEY('q'):
-            if (econfig.dirty && quit_times > 0) {
-                editor_set_status_message("Warning: File has unsaved changes. "
-                                          "Press CTRL_Q %d more time to quit.",
-                                          quit_times);
-                quit_times--;
-                return;
-            }
-            write(STDOUT_FILENO, "\x1b[2J",
-                  4); // clears the screen; check VT100
-            write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
-            exit(0);
+        case VISUAL:
             break;
-
-        case CTRL_KEY('s'):
-            editor_save();
-            break;
-
-        case HOME_KEY:
-            econfig.cx = 0;
-            break;
-
-        case END_KEY:
-            if (econfig.cy < econfig.numrows) {
-                econfig.cx = econfig.rows[econfig.cy].size - 1;
-            }
-            break;
-
-        case BACKSPACE:
-        case CTRL_KEY('h'):
-        case DEL_KEY:
-            if (c == DEL_KEY) editor_move_cursor(ARROW_RIGHT);
-            editor_del_ch();
-            break;
-
-        case PAGE_UP:
-        case PAGE_DOWN: {
-            if (c == PAGE_UP) {
-                econfig.cy = econfig.row_offset;
-            }
-            else if (c == PAGE_DOWN) {
-                econfig.cy = econfig.row_offset + econfig.screenrows - 1;
-                if (econfig.cy > econfig.numrows)
-                    econfig.cy = econfig.numrows - 1;
-            }
-
-            int times = econfig.screenrows;
-            while (times--) {
-                editor_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
-            }
-        } break;
-
-        case ARROW_UP:
-        case ARROW_DOWN:
-        case ARROW_RIGHT:
-        case ARROW_LEFT:
-            editor_move_cursor(c);
-            break;
-
-        case CTRL_KEY('l'):
-        case '\x1b':
-            break;
-
         default:
-            editor_insert_ch(c);
+            switch (c) {
+                case '\r':
+                    editor_insert_nline();
+                    break;
+
+                case CTRL_KEY('q'):
+                    if (econfig.dirty && quit_times > 0) {
+                        editor_set_status_message(
+                            "Warning: File has unsaved changes. "
+                            "Press CTRL_Q %d more time to quit.",
+                            quit_times);
+                        quit_times--;
+                        return;
+                    }
+                    write(STDOUT_FILENO, "\x1b[2J",
+                          4); // clears the screen; check VT100
+                    write(STDOUT_FILENO, "\x1b[H",
+                          3); // reposition cursor to top
+                    exit(0);
+                    break;
+
+                case CTRL_KEY('s'):
+                    editor_save();
+                    break;
+
+                case HOME_KEY:
+                    econfig.cx = 0;
+                    break;
+
+                case END_KEY:
+                    if (econfig.cy < econfig.numrows) {
+                        econfig.cx = econfig.rows[econfig.cy].size - 1;
+                    }
+                    break;
+
+                case BACKSPACE:
+                case CTRL_KEY('h'):
+                case DEL_KEY:
+                    if (c == DEL_KEY) editor_move_cursor(ARROW_RIGHT);
+                    editor_del_ch();
+                    break;
+
+                case PAGE_UP:
+                case PAGE_DOWN: {
+                    if (c == PAGE_UP) {
+                        econfig.cy = econfig.row_offset;
+                    }
+                    else if (c == PAGE_DOWN) {
+                        econfig.cy =
+                            econfig.row_offset + econfig.screenrows - 1;
+                        if (econfig.cy > econfig.numrows)
+                            econfig.cy = econfig.numrows - 1;
+                    }
+
+                    int times = econfig.screenrows;
+                    while (times--) {
+                        editor_move_cursor(c == PAGE_UP ? ARROW_UP
+                                                        : ARROW_DOWN);
+                    }
+                } break;
+
+                case ARROW_UP:
+                case ARROW_DOWN:
+                case ARROW_RIGHT:
+                case ARROW_LEFT:
+                    editor_move_cursor(c);
+                    break;
+
+                case CTRL_KEY('l'):
+                case '\x1b':
+                    break;
+
+                default:
+                    editor_insert_ch(c);
+            }
     }
 
     // reset if another key is pressed
