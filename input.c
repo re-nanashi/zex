@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "input.h"
 #include "output.h"
@@ -177,29 +178,47 @@ editor_move_cursor(int key)
     }
 }
 
+typedef enum ShiftFlag { SHIFT, UNSHIFT } sflag_t;
+
 void
-editor_move_cursor_by_word()
+editor_move_cursor_forward_by_word(sflag_t flag)
 {
     // Check if there is a text
     erow_t *row =
         (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
-
     int *cx = &econfig.cx;
-    // Skip succeeding alnum ch if 'w' is pressed while ch under cursor is alnum
-    if (isalnum(row->render[*cx])) {
-        while (isalnum(row->render[*cx]))
-            (*cx)++;
-    }
-    // Skip succeeding punct ch if 'w' is pressed while ch under cursor is punct
-    else if (ispunct(row->render[*cx])) {
-        while (ispunct(row->render[*cx]))
-            (*cx)++;
-    }
 
-    // Skip blank characters
-    if (isblank(row->render[*cx])) {
-        while (isblank(row->render[*cx]))
-            (*cx)++;
+    switch (flag) {
+        case SHIFT:
+            while (!isblank(row->render[*cx]) && *cx < row->size)
+                (*cx)++;
+
+            while (isblank(row->render[*cx]) && *cx < row->size) {
+                (*cx)++;
+            }
+
+            break;
+        case UNSHIFT:
+            // Skip succeeding alnum ch if 'w' is pressed while ch under cursor
+            // is alnum
+            if (isalnum(row->render[*cx])) {
+                while (isalnum(row->render[*cx]))
+                    (*cx)++;
+            }
+            // Skip succeeding punct ch if 'w' is pressed while ch under cursor
+            // is punct
+            else if (ispunct(row->render[*cx])) {
+                while (ispunct(row->render[*cx]))
+                    (*cx)++;
+            }
+
+            // Skip blank characters
+            if (isblank(row->render[*cx])) {
+                while (isblank(row->render[*cx]))
+                    (*cx)++;
+            }
+
+            break;
     }
 
     // Stop cursor from moving forward
@@ -244,7 +263,11 @@ process_key_normal(int c)
             break;
         // Move cursor to the first character of a word
         case 'w':
-            editor_move_cursor_by_word();
+            editor_move_cursor_forward_by_word(UNSHIFT);
+            break;
+
+        case 'W':
+            editor_move_cursor_forward_by_word(SHIFT);
             break;
 
         // Temp default
