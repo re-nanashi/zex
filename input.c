@@ -200,8 +200,8 @@ cursor_jump_forward_start_word(sflag_t flag)
             }
 
             break;
+
         case UNSHIFT:
-            // TODO: Include "_" underscore ch in checks
             // Skip succeeding alnum ch if 'w' is pressed while ch under cursor
             // is alnum
             if (isalnum(row->render[*cx])) {
@@ -224,7 +224,7 @@ cursor_jump_forward_start_word(sflag_t flag)
             break;
     }
 
-    // Stop cursor from moving forward
+    // Stop cursor from moving forward if last row
     if (econfig.cy == econfig.numrows - 1 && (*cx) == row->size) {
         (*cx)--;
         return;
@@ -253,19 +253,44 @@ cursor_jump_forward_end_word(sflag_t flag)
 
     switch (flag) {
         case SHIFT:
-            // TODO:
-            // Go to the next space/blank ch
-            while (!isblank(row->render[*cx]) && *cx < row->size)
+            if (!isblank(row->render[*cx]) && isblank(row->render[*cx + 1])) {
+                // Go to the blank char
                 (*cx)++;
 
-            // Go to the next non-space/blank ch
-            while (isblank(row->render[*cx]) && *cx < row->size) {
-                (*cx)++;
+                // Skip blanks chars; Assume: will end up at the first ch of
+                // word OR end up at the last ch of the row
+                while (isblank(row->render[*cx]) && *cx < row->size)
+                    (*cx)++;
+
+                // Go to the end of the word
+                while (
+                    !isblank(row->render[*cx])
+                    && (isalnum(row->render[*cx]) || ispunct(row->render[*cx])))
+                    (*cx)++;
+                (*cx)--;
+            }
+            else if (isblank(row->render[*cx]) && *cx < row->size) {
+                while (isblank(row->render[*cx]))
+                    (*cx)++; // will probably end up either the start of the
+                             // word or at '/n'
+            }
+            // If we are at the end of the line
+            else if (*cx >= row->size - 1) {
+                // We are not in a blank line
+                if (*cx > 0) (*cx)++;
+            }
+            else {
+                // Go to the end of the word
+                while (
+                    !isblank(row->render[*cx])
+                    && (isalnum(row->render[*cx]) || ispunct(row->render[*cx])))
+                    (*cx)++;
+                (*cx)--;
             }
 
             break;
+
         case UNSHIFT:
-            // TODO: Include "_" underscore ch in checks
             // Check if next ch is different type than the current ch
             if ((isalnum(row->render[*cx]) && !isalnum(row->render[*cx + 1]))
                 || (ispunct(row->render[*cx])
@@ -309,7 +334,7 @@ cursor_jump_forward_end_word(sflag_t flag)
             break;
     }
 
-    // Stop cursor from moving forward
+    // Stop cursor from moving forward if last row
     if (econfig.cy == econfig.numrows - 1 && (*cx) == row->size) {
         (*cx)--;
         return;
@@ -370,9 +395,14 @@ process_key_normal(int c)
         case 'W':
             cursor_jump_forward_start_word(SHIFT);
             break;
-        // Jump by end of words
+            // Jump by end of words (including punctuation)
         case 'e':
             cursor_jump_forward_end_word(UNSHIFT);
+            break;
+
+            // Jump by end of words
+        case 'E':
+            cursor_jump_forward_end_word(SHIFT);
             break;
 
         // Temp default
