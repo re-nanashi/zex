@@ -1,3 +1,9 @@
+/**
+ * @file zex.c
+ * @author re-nanashi
+ * @brief Zex main program
+ */
+
 #include <pthread.h>
 
 #include "config.h"
