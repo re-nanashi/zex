@@ -1,3 +1,9 @@
+/**
+ * @file logger.h
+ * @author re-nanashi
+ * @brief Logger functions and macros for logging messages and events in Zex
+ */
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>

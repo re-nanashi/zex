@@ -1,7 +1,7 @@
 /**
  * @file logger.h
  * @author re-nanashi
- * @brief Logger functions and macros for logging messages and events in Zex.
+ * @brief Logger functions and macros for logging messages and events in Zex
  */
 
 #ifndef LOGGER_H
