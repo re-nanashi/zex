@@ -181,14 +181,14 @@ editor_move_cursor(int key)
 typedef enum ShiftFlag { SHIFT, UNSHIFT } sflag_t;
 
 void
-cursor_jump_forward_start_word(sflag_t flag)
+cursor_jump_forward_start_word(sflag_t sflag)
 {
     // Check if there is a text
     erow_t *row =
         (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
     int *cx = &econfig.cx;
 
-    switch (flag) {
+    switch (sflag) {
         case SHIFT:
             // Go to the next space/blank ch
             while (!isblank(row->render[*cx]) && *cx < row->size)
@@ -243,15 +243,24 @@ cursor_jump_forward_start_word(sflag_t flag)
     }
 }
 
+// void
+// n_replace_char_at_cur()
+// {
+//     // Get current row where cursor is at
+//     erow_t *row =
+//         (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
+//     int *cur_xpos = &econfig.cx;
+// }
+
 void
-cursor_jump_forward_end_word(sflag_t flag)
+cursor_jump_forward_end_word(sflag_t sflag)
 {
     // Check if there is a text
     erow_t *row =
         (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
     int *cx = &econfig.cx;
 
-    switch (flag) {
+    switch (sflag) {
         case SHIFT:
             if (!isblank(row->render[*cx]) && isblank(row->render[*cx + 1])) {
                 // Go to the blank char
@@ -387,22 +396,30 @@ process_key_normal(int c)
         case '0':
             econfig.cx = 0;
             break;
+
         // Jump by start of words
         case 'w':
             cursor_jump_forward_start_word(UNSHIFT);
             break;
+
         // Jump by words
         case 'W':
             cursor_jump_forward_start_word(SHIFT);
             break;
-            // Jump by end of words (including punctuation)
+
+        // Jump by end of words (including punctuation)
         case 'e':
             cursor_jump_forward_end_word(UNSHIFT);
             break;
 
-            // Jump by end of words
+        // Jump by end of words
         case 'E':
             cursor_jump_forward_end_word(SHIFT);
+            break;
+
+        // Temp save
+        case CTRL_KEY('s'):
+            editor_save();
             break;
 
         // Temp default
