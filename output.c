@@ -8,7 +8,7 @@
 #include "output.h"
 #include "terminal.h"
 #include "logger.h"
-#include "editor_operations.h"
+#include "operations.h"
 
 void
 write_to_abuf(a_buf *ab, const char *s, int len)

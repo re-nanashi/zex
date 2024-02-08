@@ -12,7 +12,7 @@
 #include "config.h"
 #include "output.h"
 #include "file_io.h"
-#include "editor_operations.h"
+#include "operations.h"
 #include "logger.h"
 #include "input.h"
 
@@ -56,7 +56,7 @@ editor_fopen(char *filename)
         while (linelen > 0
                && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
             linelen--;
-        insert_row(econfig.numrows, line, linelen);
+        op_insert_row(econfig.numrows, line, linelen);
     }
 
     free(line);
