@@ -14,7 +14,7 @@
 #include "output.h"
 #include "logger.h"
 #include "config.h"
-#include "editor_operations.h"
+#include "operations.h"
 #include "file_io.h"
 
 /* @brief Internal macros */
@@ -159,7 +159,7 @@ editor_move_cursor(int key)
             if (econfig.cx != 0) econfig.cx--;
             break;
         case ARROW_RIGHT:
-            if (row && econfig.cx < row->size - 1) econfig.cx++;
+            if (econfig.cx < row->size) econfig.cx++;
             break;
         case ARROW_UP:
             if (econfig.cy < econfig.numrows && econfig.cy != 0) econfig.cy--;
@@ -243,14 +243,46 @@ cursor_jump_forward_start_word(sflag_t sflag)
     }
 }
 
-// void
-// n_replace_char_at_cur()
-// {
-//     // Get current row where cursor is at
-//     erow_t *row =
-//         (econfig.cy >= econfig.numrows) ? NULL : &econfig.rows[econfig.cy];
-//     int *cur_xpos = &econfig.cx;
-// }
+void
+replace_char_at_cur(sflag_t sflag)
+{
+    char c;
+
+    switch (sflag) {
+        case SHIFT: {
+            while (c != CTRL_KEY('[')) {
+                // Show mode status
+                editor_set_status_message("-- REPLACE --");
+                editor_refresh_screen();
+
+                c = editor_read_key();
+                if (c > 0x1f && c < 0x7f) {
+                    // Get current row where cursor is at
+                    erow_t *row = (econfig.cy >= econfig.numrows)
+                                      ? NULL
+                                      : &econfig.rows[econfig.cy];
+
+                    if (econfig.cx < row->size) {
+                        row->render[econfig.cx++] = c;
+                    }
+                }
+            }
+            // Remove mode status
+            editor_set_status_message("");
+        } break;
+
+        case UNSHIFT: {
+            c = editor_read_key();
+            if (c > 0x1f && c < 0x7f) {
+                // Get current row where cursor is at
+                erow_t *row = (econfig.cy >= econfig.numrows)
+                                  ? NULL
+                                  : &econfig.rows[econfig.cy];
+                row->render[econfig.cx] = c;
+            }
+        } break;
+    }
+}
 
 void
 cursor_jump_forward_end_word(sflag_t sflag)
@@ -417,9 +449,12 @@ process_key_normal(int c)
             cursor_jump_forward_end_word(SHIFT);
             break;
 
-        // Temp save
-        case CTRL_KEY('s'):
-            editor_save();
+        // Replace character under cursor
+        case 'r':
+            replace_char_at_cur(UNSHIFT);
+            break;
+        case 'R':
+            replace_char_at_cur(SHIFT);
             break;
 
         // Temp default
@@ -450,7 +485,7 @@ editor_process_keypress()
         default:
             switch (c) {
                 case '\r':
-                    editor_insert_nline();
+                    op_editor_insert_nline();
                     break;
 
                 case CTRL_KEY('q'):
@@ -487,7 +522,7 @@ editor_process_keypress()
                 case CTRL_KEY('h'):
                 case DEL_KEY:
                     if (c == DEL_KEY) editor_move_cursor(ARROW_RIGHT);
-                    editor_del_ch();
+                    op_editor_del_ch();
                     break;
 
                 case PAGE_UP:
@@ -521,7 +556,7 @@ editor_process_keypress()
                     break;
 
                 default:
-                    editor_insert_ch(c);
+                    op_editor_insert_ch(c);
             }
     }
 
