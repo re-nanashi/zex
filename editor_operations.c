@@ -5,7 +5,7 @@
 
 /* Row operations */
 int
-row_convert_cx_to_rx(erow_t *row, int cx)
+op_row_convert_cx_to_rx(erow_t *row, int cx)
 {
     int rx = 0;
 
@@ -19,7 +19,7 @@ row_convert_cx_to_rx(erow_t *row, int cx)
 }
 
 void
-update_row(erow_t *row)
+op_update_row(erow_t *row)
 {
     int tabs = 0;
     // Get the number of '\t' within the line
@@ -47,7 +47,7 @@ update_row(erow_t *row)
 }
 
 void
-insert_row(int at, char *s, size_t len)
+op_insert_row(int at, char *s, size_t len)
 {
     if (at < 0 || at > econfig.numrows) return;
 
@@ -63,25 +63,25 @@ insert_row(int at, char *s, size_t len)
 
     econfig.rows[at].rsize = 0;
     econfig.rows[at].render = NULL;
-    update_row(&econfig.rows[at]);
+    op_update_row(&econfig.rows[at]);
 
     econfig.numrows++;
     econfig.dirty++;
 }
 
 void
-free_row(erow_t *row)
+op_free_row(erow_t *row)
 {
     free(row->render);
     free(row->chars);
 }
 
 void
-delete_row(int at)
+op_delete_row(int at)
 {
     if (at < 0 || at >= econfig.numrows) return;
 
-    free_row(&econfig.rows[at]);
+    op_free_row(&econfig.rows[at]);
     memmove(&econfig.rows[at], &econfig.rows[at + 1],
             sizeof(erow_t) * (econfig.numrows - at - 1));
 
@@ -90,7 +90,7 @@ delete_row(int at)
 }
 
 void
-row_insert_ch(erow_t *row, int at, int c)
+op_row_insert_ch(erow_t *row, int at, int c)
 {
     // Check if within row size
     if (at < 0 || at > row->size) at = row->size;
@@ -104,13 +104,13 @@ row_insert_ch(erow_t *row, int at, int c)
     row->size++;
 
     // Update char string to render string
-    update_row(row);
+    op_update_row(row);
     // Flag dirty; changes have been made
     econfig.dirty++;
 }
 
 void
-row_append_str(erow_t *row, char *s, size_t len)
+op_row_append_str(erow_t *row, char *s, size_t len)
 {
     row->chars = realloc(row->chars, row->size + len + 1);
     memcpy(&row->chars[row->size], s, len); // append s to the end of the row
@@ -120,48 +120,49 @@ row_append_str(erow_t *row, char *s, size_t len)
     row->chars[row->size] = '\0';
 
     // Update char string to render string
-    update_row(row);
+    op_update_row(row);
     // Flag dirty; changes have been made
     econfig.dirty++;
 }
 
 void
-row_del_ch(erow_t *row, int at)
+op_row_del_ch(erow_t *row, int at)
 {
     if (at < 0 || at >= row->size) return;
 
     memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
     row->size--;
 
-    update_row(row);
+    op_update_row(row);
     econfig.dirty++;
 }
 
 /* Editor operations */
+// TODO: We can't get pass numrows as we are still developing Normal Mode
 void
-editor_insert_ch(int c)
+op_editor_insert_ch(int c)
 {
     if (econfig.cy == econfig.numrows) {
-        insert_row(econfig.cy, "", 0);
+        op_insert_row(econfig.cy, "", 0);
     }
 
-    row_insert_ch(&econfig.rows[econfig.cy], econfig.cx, c);
+    op_row_insert_ch(&econfig.rows[econfig.cy], econfig.cx, c);
     econfig.cx++;
 }
 
 void
-editor_insert_nline()
+op_editor_insert_nline()
 {
     if (econfig.cx == 0)
-        insert_row(econfig.cy, "", 0);
+        op_insert_row(econfig.cy, "", 0);
     else {
         erow_t *row = &econfig.rows[econfig.cy];
-        insert_row(econfig.cy + 1, &row->chars[econfig.cx],
-                   row->size - econfig.cx);
+        op_insert_row(econfig.cy + 1, &row->chars[econfig.cx],
+                      row->size - econfig.cx);
         row = &econfig.rows[econfig.cy];
         row->size = econfig.cx;
         row->chars[row->size] = '\0';
-        update_row(row);
+        op_update_row(row);
     }
 
     econfig.cy++;
@@ -169,22 +170,22 @@ editor_insert_nline()
 }
 
 void
-editor_del_ch()
+op_editor_del_ch()
 {
     if (econfig.cy == econfig.numrows) return;
     if (econfig.cx == 0 && econfig.cy == 0) return; // no char to delete
 
     erow_t *row = &econfig.rows[econfig.cy];
     if (econfig.cx > 0) {
-        row_del_ch(&econfig.rows[econfig.cy], econfig.cx);
+        op_row_del_ch(&econfig.rows[econfig.cy], econfig.cx);
         econfig.cx--;
     }
     else {
         // Cursor is at the beginning of a line
         econfig.cx = econfig.rows[econfig.cy - 1].size; // put cursor at eol
         // Append string to previous string
-        row_append_str(&econfig.rows[econfig.cy - 1], row->chars, row->size);
-        delete_row(econfig.cy);
+        op_row_append_str(&econfig.rows[econfig.cy - 1], row->chars, row->size);
+        op_delete_row(econfig.cy);
         econfig.cy--;
     }
 }
