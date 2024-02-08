@@ -37,7 +37,7 @@ editor_scroll_handler()
 
     if (econfig.cy < econfig.numrows) {
         econfig.rx =
-            row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
+            op_row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
     }
 
     if (econfig.rx < econfig.col_offset) {
