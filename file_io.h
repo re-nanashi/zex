@@ -8,20 +8,20 @@
 #define FILE_IO_H
 
 /**
- * @brief Converts text from rows to one big string
+ * @brief Converts text from rows array to one big string
  *
  * @param buflen Pointer to length variable
  */
-char *editor_rows_to_string(int *buflen);
+char *file_convert_rows_to_string(int *buflen);
 
 /**
  * @brief Opens file and extracts text to be drawn to editor
  *
  * @param filename Pointer to the (FILE *) variable that was passed
  */
-void editor_fopen(char *filename);
+void file_open(char *filename);
 
 /* @brief Saves the currently rendered text in the editor to a file */
-void editor_save();
+void file_write();
 
 #endif /* FILE_IO_H */

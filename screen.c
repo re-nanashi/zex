@@ -1,3 +1,11 @@
+/**
+ * @file screen.h
+ * @author re-nanashi
+ * @brief Function definitions responsible for managing terminal display output
+ */
+
+#include "screen.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,13 +13,12 @@
 #include <stdarg.h>
 
 #include "config.h"
-#include "output.h"
 #include "terminal.h"
 #include "logger.h"
 #include "operations.h"
 
 void
-write_to_abuf(a_buf *ab, const char *s, int len)
+write_to_abuf(append_buf_T *ab, const char *s, int len)
 {
     // Reallocate new size of append buffer
     char *new = realloc(ab->b, ab->len + len);
@@ -24,18 +31,18 @@ write_to_abuf(a_buf *ab, const char *s, int len)
 }
 
 void
-abuf_free(a_buf *ab)
+free_abuf(append_buf_T *ab)
 {
     free(ab->b);
 }
 
 void
-editor_scroll_handler()
+screen_scroll_handler()
 {
     // Horizontal scrolling
     econfig.rx = 0;
 
-    if (econfig.cy < econfig.numrows) {
+    if (econfig.cy < econfig.line_count) {
         econfig.rx =
             op_row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
     }
@@ -59,7 +66,7 @@ editor_scroll_handler()
 }
 
 void
-editor_draw_welcome_message(struct append_buf *ab, const char *format, ...)
+screen_draw_welcome_message(struct append_buf *ab, const char *format, ...)
 {
     // Copy string to temporary buffer
     va_list args;
@@ -86,21 +93,22 @@ editor_draw_welcome_message(struct append_buf *ab, const char *format, ...)
 }
 
 void
-editor_draw_rows(struct append_buf *ab)
+screen_draw_rows(struct append_buf *ab)
 {
-    int y;
+    int idx;
     int welcome_message_row = econfig.screenrows / 3;
 
-    for (y = 0; y < econfig.screenrows; y++) {
-        int filerow = y + econfig.row_offset;
+    for (idx = 0; idx < econfig.screenrows; idx++) {
+        int filerow = idx + econfig.row_offset;
 
         // Length of text file does not exceed editor height
-        if (filerow >= econfig.numrows) {
-            if (econfig.numrows == 0 && y == welcome_message_row) {
-                editor_draw_welcome_message(ab, "ZEX editor v%s", ZEX_VERSION);
+        if (filerow >= econfig.line_count) {
+            if (econfig.line_count == 0 && idx == welcome_message_row) {
+                screen_draw_welcome_message(ab, "ZEX editor v%s", ZEX_VERSION);
             }
-            else if (econfig.numrows == 0 && y == welcome_message_row + 2) {
-                editor_draw_welcome_message(
+            else if (econfig.line_count == 0 && idx == welcome_message_row + 2)
+            {
+                screen_draw_welcome_message(
                     ab, "ZEX is open source and freely distributable");
             }
             else {
@@ -122,7 +130,7 @@ editor_draw_rows(struct append_buf *ab)
 }
 
 void
-editor_draw_status_bar(struct append_buf *ab)
+screen_draw_status_bar(struct append_buf *ab)
 {
     // Draw bar by inverting color (see Select Graphic Rendition)
     write_to_abuf(ab, "\x1b[7m", 4); // m command
@@ -130,9 +138,10 @@ editor_draw_status_bar(struct append_buf *ab)
     char status[80], rstatus[80];
     int len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
                        econfig.filename ? econfig.filename : "[No Name]",
-                       econfig.numrows, econfig.dirty ? "(modified)" : "");
-    int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d:%d", econfig.cy + 1,
-                        econfig.numrows, econfig.cx + 1);
+                       econfig.line_count, econfig.dirty ? "(modified)" : "");
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d:%d",
+                        econfig.line_count > 0 ? econfig.cy + 1 : econfig.cy,
+                        econfig.cx + 1);
 
     // Draw status text to editor
     if (len > econfig.screencols) len = econfig.screencols;
@@ -153,7 +162,7 @@ editor_draw_status_bar(struct append_buf *ab)
 }
 
 void
-editor_draw_cmd_line(struct append_buf *ab)
+screen_draw_cmd_line(struct append_buf *ab)
 {
     // Erase to end of current row
     write_to_abuf(ab, "\x1b[K", 3);
@@ -166,7 +175,7 @@ editor_draw_cmd_line(struct append_buf *ab)
 }
 
 void
-editor_set_status_message(const char *format, ...)
+sbar_set_status_message(const char *format, ...)
 {
     va_list args;
 
@@ -178,24 +187,25 @@ editor_set_status_message(const char *format, ...)
 }
 
 void
-editor_refresh_screen()
+screen_refresh()
 {
     // Apply offsetting when scrolling
-    editor_scroll_handler();
+    screen_scroll_handler();
 
     // Get new terminal size
-    if (get_window_sz(&econfig.screenrows, &econfig.screencols) == -1)
+    if (term_get_window_sz(&econfig.screenrows, &econfig.screencols) == -1)
         die("get_window_sz");
 
     // Initialize buffer
-    a_buf ab = ABUF_INIT;
+    append_buf_T ab = ABUF_INIT;
 
     write_to_abuf(&ab, "\x1b[?25l", 6); // hide cursor when repainting
     write_to_abuf(&ab, "\x1b[H", 3); // reposition cursor to top
 
-    editor_draw_rows(&ab);
-    editor_draw_status_bar(&ab);
-    editor_draw_cmd_line(&ab);
+    // Draw screen elements
+    screen_draw_rows(&ab);
+    screen_draw_status_bar(&ab);
+    screen_draw_cmd_line(&ab);
 
     char buf[32];
     // Reposition cursor with offset values
@@ -208,11 +218,11 @@ editor_refresh_screen()
 
     // Draw buffer to terminal
     write(STDOUT_FILENO, ab.b, ab.len);
-    abuf_free(&ab);
+    free_abuf(&ab);
 }
 
 void *
-thread_refresh_screen()
+thread_screen_refresh()
 {
     int prev_num_rows = econfig.screenrows, prev_num_cols = econfig.screencols;
 
@@ -221,7 +231,8 @@ thread_refresh_screen()
     sleep_time.tv_nsec = 10000000;
 
     while (1) {
-        int result = get_window_sz(&econfig.screenrows, &econfig.screencols);
+        int result =
+            term_get_window_sz(&econfig.screenrows, &econfig.screencols);
         if (result == -1) die("get_window_sz");
 
         if (prev_num_rows != econfig.screenrows
@@ -232,7 +243,7 @@ thread_refresh_screen()
             prev_num_cols = econfig.screencols;
 
             // Refresh screen using new values
-            editor_refresh_screen();
+            screen_refresh();
         }
 
         nanosleep(&sleep_time, NULL);

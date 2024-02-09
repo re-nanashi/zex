@@ -1,6 +1,14 @@
+/**
+ * @file file_io.h
+ * @author re-nanashi
+ * @brief File I/O operations
+ */
+
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 #define _BSD_SOURCE
+
+#include "file_io.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,8 +18,7 @@
 #include <errno.h>
 
 #include "config.h"
-#include "output.h"
-#include "file_io.h"
+#include "screen.h"
 #include "operations.h"
 #include "logger.h"
 #include "input.h"
@@ -20,16 +27,16 @@ char *
 editor_rows_to_string(int *buflen)
 {
     int totallen = 0;
-    int j;
-    for (j = 0; j < econfig.numrows; j++)
-        totallen += econfig.rows[j].size + 1;
+    int idx;
+    for (idx = 0; idx < econfig.line_count; idx++)
+        totallen += econfig.rows[idx].size + 1;
     *buflen = totallen;
 
     char *buf = malloc(totallen);
     char *tmp = buf;
-    for (j = 0; j < econfig.numrows; j++) {
-        memcpy(tmp, econfig.rows[j].chars, econfig.rows[j].size);
-        tmp += econfig.rows[j].size;
+    for (idx = 0; idx < econfig.line_count; idx++) {
+        memcpy(tmp, econfig.rows[idx].chars, econfig.rows[idx].size);
+        tmp += econfig.rows[idx].size;
         *tmp = '\n';
         tmp++;
     }
@@ -39,7 +46,7 @@ editor_rows_to_string(int *buflen)
 }
 
 void
-editor_fopen(char *filename)
+file_open(char *filename)
 {
     // Free filename from config when opening new file
     free(econfig.filename);
@@ -56,7 +63,7 @@ editor_fopen(char *filename)
         while (linelen > 0
                && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
             linelen--;
-        op_insert_row(econfig.numrows, line, linelen);
+        op_insert_row(econfig.line_count, line, linelen);
     }
 
     free(line);
@@ -65,12 +72,12 @@ editor_fopen(char *filename)
 }
 
 void
-editor_save()
+file_write()
 {
     if (econfig.filename == NULL) {
-        econfig.filename = editor_prompt("Save as: %s");
+        econfig.filename = get_user_input_prompt("Save as: %s");
         if (econfig.filename == NULL) {
-            editor_set_status_message("Save aborted");
+            sbar_set_status_message("Save aborted");
             return;
         }
     }
@@ -87,7 +94,7 @@ editor_save()
                 // Free buffer
                 free(buf);
                 econfig.dirty = 0;
-                editor_set_status_message("%d bytes written to disk", len);
+                sbar_set_status_message("%d bytes written to disk", len);
                 return;
             }
         }
@@ -96,6 +103,6 @@ editor_save()
 
     // Free buffer
     free(buf);
-    editor_set_status_message("File cannot be saved. I/O error: %s",
-                              strerror(errno));
+    sbar_set_status_message("File cannot be saved. I/O error: %s",
+                            strerror(errno));
 }

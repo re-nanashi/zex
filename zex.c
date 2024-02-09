@@ -8,63 +8,65 @@
 
 #include "config.h"
 #include "input.h"
-#include "output.h"
+#include "screen.h"
 #include "file_io.h"
 #include "logger.h"
 #include "terminal.h"
 
-/* @brief Initialize Zex editor configurations */
-econf_t econfig;
+/* @brief Declare Zex editor configurations */
+editor_config_T econfig;
 
 void
 init_editor()
 {
+    // Initialize configurations
     econfig.cx = 0;
     econfig.cy = 0;
     econfig.rx = 0;
     econfig.row_offset = 0;
     econfig.col_offset = 0;
-    econfig.numrows = 0;
+    econfig.line_count = 0;
     econfig.rows = NULL;
-    econfig.mode = NORMAL;
+    econfig.mode = MODE_NORMAL;
     econfig.dirty = 0;
     econfig.filename = NULL;
     econfig.statusmsg[0] = '\0';
     econfig.statusmsg_time = 0;
 
-    if (get_window_sz(&econfig.screenrows, &econfig.screencols) == -1)
+    if (term_get_window_sz(&econfig.screenrows, &econfig.screencols) == -1)
         die("get_window_sz");
 }
 
 int
 main(int argc, char *argv[])
 {
-    enable_raw_mode();
+    term_enable_raw_mode();
     init_editor();
 
     // If a file to edit is passed
     if (argc >= 2) {
-        editor_fopen(argv[1]);
+        file_open(argv[1]);
     }
 
     // Create new thread for handling terminal resolution changes
     pthread_t thread;
-    if (pthread_create(&thread, NULL, thread_refresh_screen, NULL) != 0) {
+    if (pthread_create(&thread, NULL, thread_screen_refresh, NULL) != 0) {
         die("pthread_create");
         return 1;
     }
 
+    // Detach thread
     if (pthread_detach(thread) != 0) {
         die("pthread_detach");
         return 1;
     }
 
     // Set initial status message
-    editor_set_status_message("HELP: Ctrl-Q = quit");
+    sbar_set_status_message("HELP: Ctrl-Q = quit");
 
     while (1) {
-        editor_refresh_screen();
-        editor_process_keypress();
+        screen_refresh();
+        input_process_keypress();
     }
 
     return 0;

@@ -20,13 +20,22 @@ typedef struct editor_row {
     char *chars;
     /* text buffer to render to the screen */
     char *render;
-} erow_t;
+} editor_row_T;
+
+/* @brief Editor states */
+typedef enum {
+    MODE_NORMAL,
+    MODE_INSERT,
+    MODE_COMMAND,
+    MODE_VISUAL,
+    MODE_REPLACE
+} Mode;
 
 /* @brief Editor global config */
 typedef struct editor_config {
     /* cursor coordinates */
     int cx, cy;
-    /* cursor horizontal coordinates for render */
+    /* cursor x coordinate for render */
     int rx;
     /* vertical scroll row offset */
     int row_offset;
@@ -37,11 +46,11 @@ typedef struct editor_config {
     /* terminal number of cols */
     int screencols;
     /* opened file num of rows */
-    int numrows;
+    int line_count;
     /* array of all rows with text */
-    erow_t *rows;
+    editor_row_T *rows;
     /* editor mode */
-    enum { NORMAL, INSERT, VISUAL } mode;
+    Mode mode;
     /* changes counter */
     int dirty;
     /* filename str */
@@ -52,9 +61,9 @@ typedef struct editor_config {
     time_t statusmsg_time;
     /* original termios config */
     struct termios orig_termios;
-} econf_t;
+} editor_config_T;
 
 /* @brief Global config declaration */
-extern econf_t econfig;
+extern editor_config_T econfig;
 
 #endif /* CONFIG_H */
