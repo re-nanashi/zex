@@ -1,27 +1,32 @@
-#include <termio.h>
-#include <errno.h>
+/**
+ * @file terminal.c
+ * @author re-nanashi
+ * @brief Source file containing function definitions of terminal operations
+ */
+
+#include "terminal.h"
+
 #include <sys/ioctl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include "config.h"
-#include "terminal.h"
 #include "logger.h"
 
 void
-disable_raw_mode()
+term_disable_raw_mode()
 {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &econfig.orig_termios) == -1)
         die("tcsetattr");
 }
 
 void
-enable_raw_mode()
+term_enable_raw_mode()
 {
     // Disable raw mode at exit
     if (tcgetattr(STDIN_FILENO, &econfig.orig_termios) == -1) die("tcgetattr");
-    atexit(disable_raw_mode);
+    atexit(term_disable_raw_mode);
 
     // Set terminal attributes
     struct termios raw = econfig.orig_termios;
@@ -36,7 +41,7 @@ enable_raw_mode()
 }
 
 int
-get_cursor_pos(int *rows, int *cols)
+term_get_cursor_pos(int *rows, int *cols)
 {
     char buf[32];
     unsigned int idx = 0;
@@ -61,7 +66,7 @@ get_cursor_pos(int *rows, int *cols)
 }
 
 int
-get_window_sz(int *rows, int *cols)
+term_get_window_sz(int *rows, int *cols)
 {
     struct winsize ws;
 
@@ -69,7 +74,7 @@ get_window_sz(int *rows, int *cols)
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
         // Move the cursors to the edge of the terminal
         if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
-        return get_cursor_pos(rows, cols);
+        return term_get_cursor_pos(rows, cols);
     }
     else {
         // Subtract 2 from rows to give space to status bar and command line
