@@ -1,6 +1,14 @@
+/**
+ * @file input.c
+ * @author re-nanashi
+ * @brief Functions that handle user keyboard input
+ */
+
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 #define _BSD_SOURCE
+
+#include "input.h"
 
 #include <stdlib.h>
 #include <ctype.h>
@@ -10,7 +18,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "input.h"
 #include "screen.h"
 #include "logger.h"
 #include "config.h"
