@@ -236,8 +236,6 @@ replace_char_at_cur(sflag_t sflag)
     }
 }
 
-// shift -> left
-// unshift -> right
 void
 jump_to_char(int c, sflag_t sflag)
 {
