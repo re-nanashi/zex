@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include "config.h"
 #include "input.h"
@@ -71,47 +72,6 @@ cursor_jump_forward_start_word(sflag_t sflag)
         }
     }
 }
-
-void
-replace_char_at_cur(sflag_t sflag)
-{
-    char c;
-
-    switch (sflag) {
-        // TODO: Can't replace last character and insert new character
-        case SHIFT: {
-            while (c != CTRL_KEY('[')) {
-                // Show mode status
-                sbar_set_status_message("-- REPLACE --");
-                screen_refresh();
-
-                c = input_read_key();
-                if (c > 0x1f && c < 0x7f) {
-                    // Get current row where cursor is at
-                    editor_row_T *row = (econfig.cy >= econfig.line_count)
-                                            ? NULL
-                                            : &econfig.rows[econfig.cy];
-
-                    if (econfig.cx < row->size) row->render[econfig.cx++] = c;
-                }
-            }
-            // Remove mode status
-            sbar_set_status_message("");
-        } break;
-
-        case UNSHIFT: {
-            c = input_read_key();
-            if (c > 0x1f && c < 0x7f) {
-                // Get current row where cursor is at
-                editor_row_T *row = (econfig.cy >= econfig.line_count)
-                                        ? NULL
-                                        : &econfig.rows[econfig.cy];
-                row->render[econfig.cx] = c;
-            }
-        } break;
-    }
-}
-
 void
 cursor_jump_forward_end_word(sflag_t sflag)
 {
@@ -237,6 +197,98 @@ cursor_jump_forward_end_word(sflag_t sflag)
 }
 
 void
+replace_char_at_cur(sflag_t sflag)
+{
+    char c;
+
+    switch (sflag) {
+        // TODO: Can't replace last character and insert new character
+        case SHIFT: {
+            while (c != CTRL_KEY('[')) {
+                // Show mode status
+                sbar_set_status_message("-- REPLACE --");
+                screen_refresh();
+
+                c = input_read_key();
+                if (c > 0x1f && c < 0x7f) {
+                    // Get current row where cursor is at
+                    editor_row_T *row = (econfig.cy >= econfig.line_count)
+                                            ? NULL
+                                            : &econfig.rows[econfig.cy];
+
+                    if (econfig.cx < row->size) row->render[econfig.cx++] = c;
+                }
+            }
+            // Remove mode status
+            sbar_set_status_message("");
+        } break;
+
+        case UNSHIFT: {
+            c = input_read_key();
+            if (c > 0x1f && c < 0x7f) {
+                // Get current row where cursor is at
+                editor_row_T *row = (econfig.cy >= econfig.line_count)
+                                        ? NULL
+                                        : &econfig.rows[econfig.cy];
+                row->render[econfig.cx] = c;
+            }
+        } break;
+    }
+}
+
+// shift -> left
+// unshift -> right
+void
+jump_to_char(int c, sflag_t sflag)
+{
+    editor_row_T *row =
+        (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
+    int *cur_xpos = &econfig.cx, prev_pos = econfig.cx;
+
+    bool goto_char = false;
+    if (c == 'f' || c == 'F') goto_char = true;
+
+    // Inform user of key pressed
+    sbar_set_status_message("%c", c);
+    screen_refresh();
+
+    int k = input_read_key();
+    if (k > 0x1f && k < 0x7f) {
+        // Offset cursor x pos by 1 to search next instance of char incase
+        // the char to find is the same char as the one the under cursor
+        if (row)
+            sflag == UNSHIFT ? (*cur_xpos)++ : (*cur_xpos)--;
+        else {
+            sbar_set_status_message(""); // remove status
+            return;
+        }
+
+        // Find next instance of char in the string
+        switch (sflag) {
+            case SHIFT:
+                while (row->render[*cur_xpos] != k && *cur_xpos != 0)
+                    (*cur_xpos)--;
+                break;
+
+            case UNSHIFT:
+                while (row->render[*cur_xpos] != k && *cur_xpos < row->size - 1)
+                    (*cur_xpos)++;
+                break;
+        }
+
+        if (row->render[*cur_xpos] == k) {
+            if (!goto_char) sflag != SHIFT ? (*cur_xpos)-- : (*cur_xpos)++;
+        }
+        else {
+            (*cur_xpos) = prev_pos;
+        }
+
+        // Remove status after
+        sbar_set_status_message("");
+    }
+}
+
+void
 nvrc_process_key(int c)
 {
     switch (c) {
@@ -285,6 +337,25 @@ nvrc_process_key(int c)
             break;
         case 'R':
             replace_char_at_cur(SHIFT);
+            break;
+
+        // Jump to character
+        // before char
+        case 't':
+            jump_to_char(c, UNSHIFT);
+            break;
+
+        case 'T':
+            jump_to_char(c, SHIFT);
+            break;
+
+        // at char
+        case 'f':
+            jump_to_char(c, UNSHIFT);
+            break;
+
+        case 'F':
+            jump_to_char(c, SHIFT);
             break;
 
         // Temp default
