@@ -10,7 +10,7 @@
 /* @brief Internal macros */
 #define CTRL_KEY(k) ((k)&0x1f) // ctrl + key input
 
-/* @brief Not so ordinary keys */
+/* @brief Not so ordinary keys that output espace sequences */
 enum EditorKeys {
     BACKSPACE = 127,
     ARROW_UP = 1000,
@@ -24,10 +24,13 @@ enum EditorKeys {
     PAGE_DOWN
 };
 
+/* @brief Reads keyboard input */
+int input_read_key();
+
 /**
  * @brief Prompt that returns input
  *
- * @param prompt User string input
+ * @param prompt String prompt
  */
 char *get_user_input_prompt(char *prompt);
 
@@ -37,9 +40,6 @@ char *get_user_input_prompt(char *prompt);
  * @param key Movement key; arrow keys
  */
 void input_move_cursor(int key);
-
-/* @brief Read keyboard input */
-int input_read_key();
 
 /* @brief Handle keyboard input */
 void input_process_keypress();
