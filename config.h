@@ -12,14 +12,18 @@
 
 /* @brief A row in the editor */
 typedef struct editor_row {
-    /* size of the char buffer */
-    int size;
-    /* size of the render buffer */
-    int rsize;
     /* text buffer */
     char *chars;
+    /* size of the char buffer */
+    size_t size;
+    /* size of the content before cursor */
+    size_t front;
+    /* size of the gap buffer */
+    size_t gap;
     /* text buffer to render to the screen */
     char *render;
+    /* size of the render buffer */
+    size_t rsize;
 } editor_row_T;
 
 /* @brief Editor states */
@@ -46,7 +50,7 @@ typedef struct editor_config {
     /* terminal number of cols */
     int screencols;
     /* opened file num of rows */
-    int line_count;
+    size_t line_count;
     /* array of all rows with text */
     editor_row_T *rows;
     /* editor mode */
