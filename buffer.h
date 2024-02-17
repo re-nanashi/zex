@@ -7,7 +7,7 @@
 
 #define GAP_SIZE 128
 
-void rbuf_init(editor_row_T *row, size_t init);
+void rbuf_init(editor_row_T *row);
 
 void rbuf_destroy(editor_row_T *row);
 

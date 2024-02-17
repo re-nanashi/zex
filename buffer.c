@@ -5,14 +5,16 @@
 
 #include "config.h"
 
+#define INIT_SIZE 128
+
 void
-rbuf_init(editor_row_T *row, size_t init)
+rbuf_init(editor_row_T *row)
 {
     // Initialize both bufsize and gapsize to equal len
-    row->size = row->gap = init;
+    row->size = row->gap = INIT_SIZE;
     row->front = 0;
     // A row buffer's initial size would be 1024
-    row->chars = malloc(init + 1);
+    row->chars = malloc(INIT_SIZE + 1);
 }
 
 void
@@ -43,8 +45,8 @@ rbuf_insert(editor_row_T *row, int c)
 
     // Insert new char then update sizes
     row->chars[row->front] = c;
-    row->front++; // offset gap pos by one
-    row->gap--; // adjust size
+    row->front++; // offset gap pos by one; to the right
+    row->gap--; // decrement size of the gap
 }
 
 // When we leave a row, we make sure that we leave the front of the gap at
