@@ -7,7 +7,10 @@
 #include "operations.h"
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+
+#include "buffer.h"
 
 /* Row operations */
 int
@@ -27,21 +30,26 @@ op_row_convert_cx_to_rx(editor_row_T *row, int cx)
 void
 op_update_row(editor_row_T *row)
 {
-    int tabs = 0;
     // Get the number of '\t' within the line
-    int j;
+    int tabs = 0;
+    size_t j;
     for (j = 0; j < row->size; j++)
         if (row->chars[j] == '\t') tabs++;
 
     free(row->render);
     row->render = malloc(row->size + tabs * (ZEX_TAB_STOP - 1) + 1);
 
-    int idx = 0;
+    size_t idx = 0;
     for (j = 0; j < row->size; j++) {
+        // Skip rendering the gap
+        if (j >= row->front && j < row->front + row->gap) continue;
+
+        // Render tab as spaces until tabstop
         if (row->chars[j] == '\t') {
             row->render[idx++] = ' ';
-            while (idx % ZEX_TAB_STOP != 0)
+            while (idx % ZEX_TAB_STOP != 0) {
                 row->render[idx++] = ' ';
+            }
         }
         else {
             row->render[idx++] = row->chars[j];
@@ -53,20 +61,25 @@ op_update_row(editor_row_T *row)
 }
 
 void
-op_insert_row(int at, char *s, size_t len)
+op_insert_row(colnr_T at, char *s)
 {
+    // Check if there is row/line
     if (at < 0 || at > econfig.line_count) return;
-
     econfig.rows =
         realloc(econfig.rows, sizeof(editor_row_T) * (econfig.line_count + 1));
+
     memmove(&econfig.rows[at + 1], &econfig.rows[at],
             sizeof(editor_row_T) * (econfig.line_count - at));
 
-    econfig.rows[at].size = len;
-    econfig.rows[at].chars = malloc(len + 1);
-    memcpy(econfig.rows[at].chars, s, len);
-    econfig.rows[at].chars[len] = '\0';
+    // Init gap buffer
+    rbuf_init(&econfig.rows[at]);
 
+    // Insert string to buffer
+    rbuf_insertstr(&econfig.rows[at], s);
+    size_t nlen = econfig.rows[at].size;
+    econfig.rows[at].chars[nlen] = '\0';
+
+    // Update row to be renderable to screen
     econfig.rows[at].rsize = 0;
     econfig.rows[at].render = NULL;
     op_update_row(&econfig.rows[at]);
@@ -78,12 +91,11 @@ op_insert_row(int at, char *s, size_t len)
 void
 op_free_row(editor_row_T *row)
 {
-    free(row->render);
-    free(row->chars);
+    rbuf_destroy(row);
 }
 
 void
-op_delete_row(int at)
+op_delete_row(linenr_T at)
 {
     if (at < 0 || at >= econfig.line_count) return;
 
@@ -96,19 +108,16 @@ op_delete_row(int at)
 }
 
 void
-op_row_insert_ch(editor_row_T *row, int at, int c)
+op_row_insert_ch(editor_row_T *row, colnr_T at, int c)
 {
     // Check if within row size
-    if (at < 0 || at > row->size) at = row->size;
+    size_t rstrlen = row->size - row->gap;
+    if (at < 0 || at > rstrlen) at = rstrlen;
 
-    // Add 2 bytes of memory to accomodate new char and null terminator
-    row->chars = realloc(row->chars, row->size + 2);
-
-    // Move new string after at to at + 1
-    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
-    row->chars[at] = c;
-    row->size++;
-
+    // Move the front of the gap buffer to at
+    rbuf_move(row, at - row->front);
+    // Insert character to the front of the buffer
+    rbuf_insert(row, c);
     // Update char string to render string
     op_update_row(row);
     // Flag dirty; changes have been made
@@ -116,15 +125,9 @@ op_row_insert_ch(editor_row_T *row, int at, int c)
 }
 
 void
-op_row_append_str(editor_row_T *row, char *s, size_t len)
+op_row_append_str(editor_row_T *row, char *s)
 {
-    row->chars = realloc(row->chars, row->size + len + 1);
-    memcpy(&row->chars[row->size], s, len); // append s to the end of the row
-
-    // Update new row size
-    row->size += len;
-    row->chars[row->size] = '\0';
-
+    rbuf_insertstr(row, s);
     // Update char string to render string
     op_update_row(row);
     // Flag dirty; changes have been made
@@ -132,13 +135,16 @@ op_row_append_str(editor_row_T *row, char *s, size_t len)
 }
 
 void
-op_row_del_ch(editor_row_T *row, int at)
+op_row_del_ch(editor_row_T *row, colnr_T at)
 {
-    if (at < 0 || at >= row->size) return;
+    size_t rstrlen = row->size - row->gap;
+    if (at < 0 || at >= rstrlen) return;
 
-    memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
-    row->size--;
+    // Moves the gap infront of  row[at] then deletes the ch after the gap
+    rbuf_move(row, at - row->front);
+    rbuf_delete(row);
 
+    // Update the row to be renderable
     op_update_row(row);
     econfig.dirty++;
 }
@@ -149,7 +155,7 @@ void
 op_editor_insert_ch(int c)
 {
     if (econfig.cy == econfig.line_count) {
-        op_insert_row(econfig.cy, "", 0);
+        op_insert_row(econfig.cy, "");
     }
 
     op_row_insert_ch(&econfig.rows[econfig.cy], econfig.cx, c);
@@ -159,15 +165,22 @@ op_editor_insert_ch(int c)
 void
 op_editor_insert_nline()
 {
-    if (econfig.cx == 0)
-        op_insert_row(econfig.cy, "", 0);
+
+    // Insert a new row
+    if (econfig.cx == 0) op_insert_row(econfig.cy, "");
+    // Insert trailing chars to new row
     else {
-        editor_row_T *row = &econfig.rows[econfig.cy];
-        op_insert_row(econfig.cy + 1, &row->chars[econfig.cx],
-                      row->size - econfig.cx);
+        editor_row_T *row = &econfig.rows[econfig.cy]; // cursor current row
+        rbuf_move(row, econfig.cx - row->front); // move gap infront of cursor
+        // Get the size of the trailing characters
+        size_t tail_sz = row->size - row->front - row->gap;
+        // Insert trailing characters to new row
+        op_insert_row(econfig.cy + 1, &row->chars[row->front + row->gap]);
+
+        // Update the sizes
         row = &econfig.rows[econfig.cy];
-        row->size = econfig.cx;
-        row->chars[row->size] = '\0';
+        row->gap += tail_sz;
+
         op_update_row(row);
     }
 
@@ -182,16 +195,28 @@ op_editor_del_ch()
     if (econfig.cx == 0 && econfig.cy == 0) return; // no char to delete
 
     editor_row_T *row = &econfig.rows[econfig.cy];
-    if (econfig.cx > 0) {
-        op_row_del_ch(&econfig.rows[econfig.cy], econfig.cx);
-        econfig.cx--;
-    }
-    else {
-        // Cursor is at the beginning of a line
-        econfig.cx = econfig.rows[econfig.cy - 1].size; // put cursor at eol
-        // Append string to previous string
-        op_row_append_str(&econfig.rows[econfig.cy - 1], row->chars, row->size);
+    // Check if cur is at the beginning of a line
+    if (econfig.cx == 0) {
+        editor_row_T *prev_row = &econfig.rows[econfig.cy - 1];
+
+        // Move gap to the end of prev_row's char
+        size_t tail_sz = prev_row->size - prev_row->front
+                         - prev_row->gap; // current number of chars after gap
+        if (tail_sz) {
+            rbuf_move(prev_row,
+                      tail_sz); // offset gap's front pointer by tail_sz amt
+        }
+
+        // Put cursor at the EOL of prev_row then insert text
+        econfig.cx = prev_row->size - prev_row->gap;
+        rbuf_insertstr(prev_row, row->render);
+
+        // Delete row
         op_delete_row(econfig.cy);
         econfig.cy--;
+    }
+    else {
+        op_row_del_ch(row, econfig.cx - 1);
+        econfig.cx--;
     }
 }

@@ -39,7 +39,7 @@ void op_update_row(editor_row_T *row);
  * @param str String to insert
  * @param len Length of string to insert
  */
-void op_insert_row(int at, char *str, size_t len);
+void op_insert_row(linenr_T at, char *str);
 
 /**
  * @brief Free a memory allocated for row
@@ -53,7 +53,7 @@ void op_free_row(editor_row_T *row);
  *
  * @param at Cursor y position; used as index to insert row
  */
-void op_delete_row(int at);
+void op_delete_row(linenr_T at);
 
 /**
  * @brief Insert a character to the line/row
@@ -62,7 +62,7 @@ void op_delete_row(int at);
  * @param at Cursor x pos; position of the character to be inserted
  * @param c Char to insert
  */
-void op_row_insert_ch(editor_row_T *row, int at, int c);
+void op_row_insert_ch(editor_row_T *row, colnr_T at, int c);
 
 /**
  * @brief Append string
@@ -71,7 +71,7 @@ void op_row_insert_ch(editor_row_T *row, int at, int c);
  * @param str String to append
  * @param len Length of string to append
  */
-void op_row_append_str(editor_row_T *row, char *str, size_t len);
+void op_row_append_str(editor_row_T *row, char *str);
 
 /**
  * @brief Delete a character from line/row
@@ -79,7 +79,7 @@ void op_row_append_str(editor_row_T *row, char *str, size_t len);
  * @param row  Pointer to row to delete from
  * @param at Cursor x pos; position of the character to dlete
  */
-void op_row_del_ch(editor_row_T *row, int at);
+void op_row_del_ch(editor_row_T *row, colnr_T at);
 
 /* editor operations */
 /**
