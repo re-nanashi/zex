@@ -42,7 +42,10 @@ screen_scroll_handler()
     // Horizontal scrolling
     econfig.rx = 0;
 
+    // Cursor is somewhere between 0 and the last row of the editor
+    // If there are lines to handle
     if (econfig.cy < econfig.line_count) {
+        // We are going to convert cx to rx because(?)
         econfig.rx =
             op_row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
     }
@@ -99,7 +102,7 @@ screen_draw_rows(struct append_buf *ab)
     int welcome_message_row = econfig.screenrows / 3;
 
     for (idx = 0; idx < econfig.screenrows; idx++) {
-        int filerow = idx + econfig.row_offset;
+        size_t filerow = idx + econfig.row_offset;
 
         // Length of text file does not exceed editor height
         if (filerow >= econfig.line_count) {
@@ -116,6 +119,7 @@ screen_draw_rows(struct append_buf *ab)
             }
         }
         // Draw text from file to editor
+        // TODO(Gap buffer):Write buffer to screen without render the gapsize
         else {
             int len = econfig.rows[filerow].rsize - econfig.col_offset;
             if (len < 0) len = 0;
@@ -136,10 +140,11 @@ screen_draw_status_bar(struct append_buf *ab)
     write_to_abuf(ab, "\x1b[7m", 4); // m command
 
     char status[80], rstatus[80];
-    int len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
-                       econfig.filename ? econfig.filename : "[No Name]",
-                       econfig.line_count, econfig.dirty ? "(modified)" : "");
-    int rlen = snprintf(rstatus, sizeof(rstatus), "%d:%d",
+    int len =
+        snprintf(status, sizeof(status), "%.20s - %d lines %s",
+                 econfig.filename ? econfig.filename : "[No Name]",
+                 (int)econfig.line_count, econfig.dirty ? "(modified)" : "");
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%lu:%lu",
                         econfig.line_count > 0 ? econfig.cy + 1 : econfig.cy,
                         econfig.cx + 1);
 
@@ -209,7 +214,7 @@ screen_refresh()
 
     char buf[32];
     // Reposition cursor with offset values
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH",
+    snprintf(buf, sizeof(buf), "\x1b[%lu;%luH",
              (econfig.cy - econfig.row_offset) + 1,
              (econfig.rx - econfig.col_offset) + 1);
     write_to_abuf(&ab, buf, strlen(buf));
