@@ -15,7 +15,7 @@ cursor_jump_forward_start_word(sflag_t sflag)
     // Check if there is a text
     editor_row_T *row =
         (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
-    int *cx = &econfig.cx;
+    colnr_T *cx = &econfig.cx;
 
     switch (sflag) {
         case SHIFT:
@@ -72,13 +72,14 @@ cursor_jump_forward_start_word(sflag_t sflag)
         }
     }
 }
+
 void
 cursor_jump_forward_end_word(sflag_t sflag)
 {
     // Check if there is a text
     editor_row_T *row =
         (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
-    int *cx = &econfig.cx;
+    colnr_T *cx = &econfig.cx;
 
     switch (sflag) {
         case SHIFT:
@@ -241,7 +242,7 @@ jump_to_char(int c, sflag_t sflag)
 {
     editor_row_T *row =
         (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
-    int *cur_xpos = &econfig.cx, prev_pos = econfig.cx;
+    colnr_T *cx = &econfig.cx, prev_pos = econfig.cx;
 
     bool goto_char = false;
     if (c == 'f' || c == 'F') goto_char = true;
@@ -255,7 +256,7 @@ jump_to_char(int c, sflag_t sflag)
         // Offset cursor x pos by 1 to search next instance of char incase
         // the char to find is the same char as the one the under cursor
         if (row)
-            sflag == UNSHIFT ? (*cur_xpos)++ : (*cur_xpos)--;
+            sflag == UNSHIFT ? (*cx)++ : (*cx)--;
         else {
             sbar_set_status_message(""); // remove status
             return;
@@ -264,21 +265,21 @@ jump_to_char(int c, sflag_t sflag)
         // Find next instance of char in the string
         switch (sflag) {
             case SHIFT:
-                while (row->render[*cur_xpos] != k && *cur_xpos != 0)
-                    (*cur_xpos)--;
+                while (row->render[*cx] != k && *cx != 0)
+                    (*cx)--;
                 break;
 
             case UNSHIFT:
-                while (row->render[*cur_xpos] != k && *cur_xpos < row->size - 1)
-                    (*cur_xpos)++;
+                while (row->render[*cx] != k && *cx < row->size - 1)
+                    (*cx)++;
                 break;
         }
 
-        if (row->render[*cur_xpos] == k) {
-            if (!goto_char) sflag != SHIFT ? (*cur_xpos)-- : (*cur_xpos)++;
+        if (row->render[*cx] == k) {
+            if (!goto_char) sflag != SHIFT ? (*cx)-- : (*cx)++;
         }
         else {
-            (*cur_xpos) = prev_pos;
+            (*cx) = prev_pos;
         }
 
         // Remove status after
