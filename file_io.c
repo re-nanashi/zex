@@ -27,7 +27,7 @@ char *
 editor_rows_to_string(int *buflen)
 {
     int totallen = 0;
-    int idx;
+    size_t idx;
     for (idx = 0; idx < econfig.line_count; idx++)
         totallen += econfig.rows[idx].size + 1;
     *buflen = totallen;
