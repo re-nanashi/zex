@@ -56,6 +56,9 @@ void
 rbuf_insertstr(editor_row_T *row, const char *s)
 {
     size_t len = strlen(s);
+    while (len > 0 && (s[len - 1] == '\n' || s[len - 1] == '\r'))
+        len--;
+
     size_t tail = row->size - row->front - row->gap;
 
     while (row->gap < len) {
@@ -100,7 +103,7 @@ rbuf_forward(editor_row_T *row)
 void
 rbuf_move(editor_row_T *row, ptrdiff_t amt)
 {
-    size_t len;
+    size_t len = 0;
     char *dest, *src;
 
     if (amt < 0) {
