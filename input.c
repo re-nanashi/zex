@@ -153,9 +153,10 @@ input_move_cursor(int key)
         case ARROW_LEFT:
             if (row && econfig.cx != 0) econfig.cx--;
             break;
-        case ARROW_RIGHT:
-            if (row && econfig.cx < row->size - 1) econfig.cx++;
-            break;
+        case ARROW_RIGHT: {
+            colnr_T rsize = row->size - row->gap;
+            if (row && econfig.cx < rsize - 1) econfig.cx++;
+        } break;
         case ARROW_UP:
             if (row && econfig.cy < econfig.line_count && econfig.cy != 0)
                 econfig.cy--;
@@ -166,7 +167,7 @@ input_move_cursor(int key)
     }
 
     row = (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
-    int rowlen = row ? row->size : 0;
+    colnr_T rowlen = row ? (row->size - row->gap) : 0;
     if (econfig.cx >= rowlen) {
         // If row length is zero, put cx at the start of line (cx = 0)
         // Else, put cursor at the end character
