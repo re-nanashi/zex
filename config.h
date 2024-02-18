@@ -10,6 +10,12 @@
 #include <termios.h>
 #include <time.h>
 
+/* @brief Line number type */
+typedef size_t linenr_T;
+
+/* @brief Column number type */
+typedef size_t colnr_T;
+
 /* @brief A row in the editor */
 typedef struct editor_row {
     /* text buffer */
@@ -37,20 +43,22 @@ typedef enum {
 
 /* @brief Editor global config */
 typedef struct editor_config {
-    /* cursor coordinates */
-    int cx, cy;
+    /* cursor x coordinate */
+    colnr_T cx;
+    /* cursor y coordinate */
+    linenr_T cy;
     /* cursor x coordinate for render */
-    int rx;
-    /* vertical scroll row offset */
-    int row_offset;
+    colnr_T rx;
     /* horizontal scroll col offset */
-    int col_offset;
+    colnr_T col_offset;
+    /* vertical scroll row offset */
+    linenr_T row_offset;
     /* terminal number of rows */
     int screenrows;
     /* terminal number of cols */
     int screencols;
     /* opened file num of rows */
-    size_t line_count;
+    linenr_T line_count;
     /* array of all rows with text */
     editor_row_T *rows;
     /* editor mode */
