@@ -63,7 +63,7 @@ file_open(char *filename)
         while (linelen > 0
                && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
             linelen--;
-        op_insert_row(econfig.line_count, line, linelen);
+        op_insert_row(econfig.line_count, line);
     }
 
     free(line);
