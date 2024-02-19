@@ -91,7 +91,7 @@ void
 rbuf_forward(editor_row_T *row)
 {
     size_t tail = row->size - row->front - row->gap;
-    // if at the end of line
+    // if there are chars after gap
     if (tail > 0) {
         row->chars[row->front] = row->chars[row->front + row->gap];
         row->front++;
@@ -121,6 +121,7 @@ rbuf_move(editor_row_T *row, ptrdiff_t amt)
         if (len > tail) len = tail;
         dest = row->chars + row->front;
         src = row->chars + row->front + row->gap;
+        row->front += len;
     }
 
     // Move the substring to new address
