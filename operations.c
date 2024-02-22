@@ -115,7 +115,9 @@ op_row_insert_ch(editor_row_T *row, colnr_T at, int c)
     if (at < 0 || at > rstrlen) at = rstrlen;
 
     // Move the front of the gap buffer to at
-    rbuf_move(row, at - row->front);
+    ptrdiff_t offset = at - row->front;
+    rbuf_move(row, offset);
+
     // Insert character to the front of the buffer
     rbuf_insert(row, c);
     // Update char string to render string
@@ -209,7 +211,7 @@ op_editor_del_ch()
 
         // Put cursor at the EOL of prev_row then insert text
         econfig.cx = prev_row->size - prev_row->gap;
-        rbuf_insertstr(prev_row, row->render);
+        op_row_append_str(prev_row, row->render);
 
         // Delete row
         op_delete_row(econfig.cy);
