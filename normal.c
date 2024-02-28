@@ -1,3 +1,9 @@
+/**
+ * @file normal.c
+ * @author re-nanashi
+ * @brief Functions that handle when on Normal Mode
+ */
+
 #include "normal.h"
 
 #include <stdlib.h>
@@ -8,29 +14,29 @@
 #include "config.h"
 #include "input.h"
 #include "screen.h"
+#include "operations.h"
 
+// TODO: Work on normal mode behavior
 void
-cursor_jump_forward_start_word(sflag_t sflag)
+cursor_jump_forward_start_word(shift_status_T sstatus)
 {
     // Check if there is a text
     editor_row_T *row =
         (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
     colnr_T *cx = &econfig.cx;
 
-    switch (sflag) {
+    switch (sstatus) {
         case SHIFT:
             // Go to the next space/blank ch
             while (!isblank(row->render[*cx]) && *cx < row->size)
                 (*cx)++;
-
             // Go to the next non-space/blank ch
             while (isblank(row->render[*cx]) && *cx < row->size) {
                 (*cx)++;
             }
-
             break;
 
-        case UNSHIFT:
+        case SHIFT_NOT_PRESSED:
             // Skip succeeding alnum ch if 'w' is pressed while ch under cursor
             // is alnum
             if (isalnum(row->render[*cx])) {
@@ -49,7 +55,6 @@ cursor_jump_forward_start_word(sflag_t sflag)
                 while (isblank(row->render[*cx]))
                     (*cx)++;
             }
-
             break;
     }
 
@@ -74,14 +79,14 @@ cursor_jump_forward_start_word(sflag_t sflag)
 }
 
 void
-cursor_jump_forward_end_word(sflag_t sflag)
+cursor_jump_forward_end_word(shift_status_T sstatus)
 {
     // Check if there is a text
     editor_row_T *row =
         (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
     colnr_T *cx = &econfig.cx;
 
-    switch (sflag) {
+    switch (sstatus) {
         case SHIFT:
             if (!isblank(row->render[*cx]) && isblank(row->render[*cx + 1])) {
                 // Go to the blank char
@@ -120,7 +125,7 @@ cursor_jump_forward_end_word(sflag_t sflag)
 
             break;
 
-        case UNSHIFT:
+        case SHIFT_NOT_PRESSED:
             // Check if next ch is different type than the current ch
             if ((isalnum(row->render[*cx]) && !isalnum(row->render[*cx + 1]))
                 || (ispunct(row->render[*cx])
@@ -198,11 +203,11 @@ cursor_jump_forward_end_word(sflag_t sflag)
 }
 
 void
-replace_char_at_cur(sflag_t sflag)
+replace_char_at_cur(shift_status_T sstatus)
 {
     char c;
 
-    switch (sflag) {
+    switch (sstatus) {
         // TODO: Can't replace last character and insert new character
         case SHIFT: {
             while (c != CTRL_KEY('[')) {
@@ -224,7 +229,7 @@ replace_char_at_cur(sflag_t sflag)
             sbar_set_status_message("");
         } break;
 
-        case UNSHIFT: {
+        case SHIFT_NOT_PRESSED: {
             c = input_read_key();
             if (c > 0x1f && c < 0x7f) {
                 // Get current row where cursor is at
@@ -238,12 +243,11 @@ replace_char_at_cur(sflag_t sflag)
 }
 
 void
-jump_to_char(int c, sflag_t sflag)
+jump_to_char(int c, shift_status_T sstatus)
 {
     editor_row_T *row =
         (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
     colnr_T *cx = &econfig.cx, prev_pos = econfig.cx;
-
     bool goto_char = false;
     if (c == 'f' || c == 'F') goto_char = true;
 
@@ -256,27 +260,26 @@ jump_to_char(int c, sflag_t sflag)
         // Offset cursor x pos by 1 to search next instance of char incase
         // the char to find is the same char as the one the under cursor
         if (row)
-            sflag == UNSHIFT ? (*cx)++ : (*cx)--;
+            sstatus == SHIFT_NOT_PRESSED ? (*cx)++ : (*cx)--;
         else {
             sbar_set_status_message(""); // remove status
             return;
         }
 
         // Find next instance of char in the string
-        switch (sflag) {
+        switch (sstatus) {
             case SHIFT:
                 while (row->render[*cx] != k && *cx != 0)
                     (*cx)--;
                 break;
-
-            case UNSHIFT:
+            case SHIFT_NOT_PRESSED:
                 while (row->render[*cx] != k && *cx < row->size - 1)
                     (*cx)++;
                 break;
         }
 
         if (row->render[*cx] == k) {
-            if (!goto_char) sflag != SHIFT ? (*cx)-- : (*cx)++;
+            if (!goto_char) sstatus != SHIFT ? (*cx)-- : (*cx)++;
         }
         else {
             (*cx) = prev_pos;
@@ -288,7 +291,7 @@ jump_to_char(int c, sflag_t sflag)
 }
 
 void
-nvrc_process_key(int c)
+nv_process_key(int c)
 {
     switch (c) {
         // Movement keys
@@ -312,7 +315,7 @@ nvrc_process_key(int c)
 
         // Jump by start of words (including punctuation)
         case 'w':
-            cursor_jump_forward_start_word(UNSHIFT);
+            cursor_jump_forward_start_word(SHIFT_NOT_PRESSED);
             break;
 
         // Jump by words
@@ -322,7 +325,7 @@ nvrc_process_key(int c)
 
         // Jump by end of words (including punctuation)
         case 'e':
-            cursor_jump_forward_end_word(UNSHIFT);
+            cursor_jump_forward_end_word(SHIFT_NOT_PRESSED);
             break;
 
         // Jump by end of words
@@ -332,7 +335,7 @@ nvrc_process_key(int c)
 
         // Replace character under cursor
         case 'r':
-            replace_char_at_cur(UNSHIFT);
+            replace_char_at_cur(SHIFT_NOT_PRESSED);
             break;
         case 'R':
             replace_char_at_cur(SHIFT);
@@ -341,7 +344,7 @@ nvrc_process_key(int c)
         // Jump to character
         // before char
         case 't':
-            jump_to_char(c, UNSHIFT);
+            jump_to_char(c, SHIFT_NOT_PRESSED);
             break;
 
         case 'T':
@@ -350,20 +353,32 @@ nvrc_process_key(int c)
 
         // at char
         case 'f':
-            jump_to_char(c, UNSHIFT);
+            jump_to_char(c, SHIFT_NOT_PRESSED);
             break;
 
         case 'F':
             jump_to_char(c, SHIFT);
             break;
 
-        // Temp default
-        default:
+        case CTRL_KEY('q'):
             write(STDOUT_FILENO, "\x1b[2J",
                   4); // clears the screen; check VT100
-            write(STDOUT_FILENO, "\x1b[H",
-                  3); // reposition cursor to top
+            write(STDOUT_FILENO, "\x1b[H", 3); // reposition cursor to top
             exit(0);
+            break;
+
+        // Handle delete keys
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+        case DEL_KEY:
+            if (c == DEL_KEY) input_move_cursor(ARROW_RIGHT);
+            op_editor_del_ch();
+            break;
+
+        // Temp default
+        default:
+            // Insert character to line/row
+            op_editor_insert_ch(c);
             break;
     }
 }
