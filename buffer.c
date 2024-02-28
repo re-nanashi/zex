@@ -1,3 +1,9 @@
+/**
+ * @file buffer.c
+ * @author re-nanashi
+ * @brief Contains functions for gap buffer
+ */
+
 #include "buffer.h"
 
 #include <stdlib.h>
@@ -27,7 +33,6 @@ rbuf_destroy(editor_row_T *row)
     row->render = NULL;
 }
 
-// TODO(2): Update row to render
 void
 rbuf_insert(editor_row_T *row, int c)
 {
