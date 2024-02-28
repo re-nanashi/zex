@@ -45,7 +45,8 @@ screen_scroll_handler()
     // Cursor is somewhere between 0 and the last row of the editor
     // If there are lines to handle
     if (econfig.cy < econfig.line_count) {
-        // We are going to convert cx to rx because(?)
+        // When string goes past the screencols we will convert mouse pos(state)
+        // to the position of the the rendered character that was offsetted
         econfig.rx =
             op_row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
     }
@@ -119,7 +120,6 @@ screen_draw_rows(struct append_buf *ab)
             }
         }
         // Draw text from file to editor
-        // TODO(Gap buffer):Write buffer to screen without render the gapsize
         else {
             int len = econfig.rows[filerow].rsize - econfig.col_offset;
             if (len < 0) len = 0;
