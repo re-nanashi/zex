@@ -37,8 +37,9 @@ typedef enum {
     MODE_NORMAL,
     MODE_INSERT,
     MODE_COMMAND,
-    MODE_VISUAL,
-    MODE_REPLACE
+    /* mode for operator keys: g, R, y, d, c */
+    MODE_OP_PENDING,
+    MODE_COUNT_PENDING
 } Mode;
 
 /* @brief Editor global config */
