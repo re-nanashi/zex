@@ -12,6 +12,7 @@
 #include "file_io.h"
 #include "logger.h"
 #include "terminal.h"
+#include "state.h"
 
 /* @brief Declare Zex editor configurations */
 editor_config_T econfig;
@@ -64,10 +65,7 @@ main(int argc, char *argv[])
     // Set initial status message
     sbar_set_status_message("HELP: Ctrl-Q = quit");
 
-    while (1) {
-        screen_refresh();
-        input_process_keypress();
-    }
+    state_enter(nv_mode, NULL);
 
     return 0;
 }
