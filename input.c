@@ -98,7 +98,6 @@ input_read_key()
         return '\x1b';
     }
     else {
-
         return c;
     }
 }
@@ -172,107 +171,5 @@ input_move_cursor(int key)
         // If row length is zero, put cx at the start of line (cx = 0)
         // Else, put cursor at the end character
         econfig.cx = rowlen == 0 ? rowlen : rowlen - 1;
-    }
-}
-
-void
-input_process_keypress()
-{
-    // Number of tries a user has to input in order to quit editor
-    static int quit_times = ZEX_QUIT_TIMES;
-
-    // Read user input
-    int c = input_read_key();
-
-    switch (econfig.mode) {
-        // TODO: Keyhandlers for different modes
-        case MODE_NORMAL:
-        case MODE_VISUAL:
-        case MODE_REPLACE:
-        case MODE_COMMAND:
-            nvrc_process_key(c);
-            break;
-        case MODE_INSERT:
-            switch (c) {
-                case CTRL_KEY('l'):
-                case '\x1b':
-                    break;
-
-                case CTRL_KEY('q'):
-                    if (econfig.dirty && quit_times > 0) {
-                        sbar_set_status_message(
-                            "Warning: File has unsaved changes. "
-                            "Press CTRL_Q %d more time to quit.",
-                            quit_times);
-                        quit_times--;
-                        return;
-                    }
-                    write(STDOUT_FILENO, "\x1b[2J",
-                          4); // clears the screen; check VT100
-                    write(STDOUT_FILENO, "\x1b[H",
-                          3); // reposition cursor to top
-                    exit(0);
-                    break;
-
-                case CTRL_KEY('s'):
-                    file_write();
-                    break;
-
-                // Movement keys handling
-                case HOME_KEY:
-                    econfig.cx = 0;
-                    break;
-
-                case END_KEY:
-                    if (econfig.cy < econfig.line_count) {
-                        econfig.cx = econfig.rows[econfig.cy].size - 1;
-                    }
-                    break;
-
-                case PAGE_UP:
-                case PAGE_DOWN: {
-                    if (c == PAGE_UP) {
-                        econfig.cy = econfig.row_offset;
-                    }
-                    else if (c == PAGE_DOWN) {
-                        econfig.cy =
-                            econfig.row_offset + econfig.screenrows - 1;
-                        if (econfig.cy > econfig.line_count)
-                            econfig.cy = econfig.line_count - 1;
-                    }
-
-                    int times = econfig.screenrows;
-                    while (times--) {
-                        input_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
-                    }
-                } break;
-
-                case ARROW_UP:
-                case ARROW_DOWN:
-                case ARROW_RIGHT:
-                case ARROW_LEFT:
-                    input_move_cursor(c);
-                    break;
-
-                // Insert new line
-                case '\r':
-                    op_editor_insert_nline();
-                    break;
-
-                // Handle delete keys
-                case BACKSPACE:
-                case CTRL_KEY('h'):
-                case DEL_KEY:
-                    if (c == DEL_KEY) input_move_cursor(ARROW_RIGHT);
-                    op_editor_del_ch();
-                    break;
-
-                default:
-                    // Insert character to line/row
-                    op_editor_insert_ch(c);
-            }
-
-            // Reset if another key is pressed
-            quit_times = ZEX_QUIT_TIMES;
     }
 }
