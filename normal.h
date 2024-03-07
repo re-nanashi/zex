@@ -9,6 +9,6 @@ void replace_char_at_cur(shift_status_T shift_status);
 
 void cursor_jump_forward_end_word(shift_status_T shift_status);
 
-void nv_process_key(int c);
+void nv_process_key(int key);
 
 #endif
