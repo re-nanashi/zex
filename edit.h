@@ -1,7 +1,7 @@
 /**
- * @file operations.h
+ * @file edit.h
  * @author re-nanashi
- * @brief Header file containing functions that will handle editor operations
+ * @brief Header file containing functions that will handle editing operations
  */
 
 #ifndef OPERATIONS_H
@@ -18,7 +18,7 @@
  * @param row Row to convert from
  * @param cx Current cursor position
  */
-int op_row_convert_cx_to_rx(editor_row_T *row, int cx);
+int row_convert_cx_to_rx(editor_row_T *row, int cx);
 
 /**
  * @brief Update row and change '\t' to spaces
@@ -27,10 +27,10 @@ int op_row_convert_cx_to_rx(editor_row_T *row, int cx);
  *
  * @param row Row to update
  */
-void op_update_row(editor_row_T *row);
+void row_update(editor_row_T *row);
 
 /**
- * @brief Insert row to editor
+ * @brief Insert new row to editor
  *
  * Insert row by reallocating new size of rows
  * NOTE: Very slow as it will copy previous data and offset it
@@ -39,21 +39,21 @@ void op_update_row(editor_row_T *row);
  * @param str String to insert
  * @param len Length of string to insert
  */
-void op_insert_row(linenr_T at, char *str);
+void row_new(linenr_T at, char *str);
 
 /**
  * @brief Free a memory allocated for row
  *
  * @param row Pointer to row to free
  */
-void op_free_row(editor_row_T *row);
+void row_free(editor_row_T *row);
 
 /**
  * @brief Delete a row
  *
  * @param at Cursor y position; used as index to insert row
  */
-void op_delete_row(linenr_T at);
+void row_delete(linenr_T at);
 
 /**
  * @brief Insert a character to the line/row
@@ -62,7 +62,7 @@ void op_delete_row(linenr_T at);
  * @param at Cursor x pos; position of the character to be inserted
  * @param c Char to insert
  */
-void op_row_insert_ch(editor_row_T *row, colnr_T at, int c);
+void row_insert_char(editor_row_T *row, colnr_T at, int c);
 
 /**
  * @brief Append string
@@ -71,7 +71,7 @@ void op_row_insert_ch(editor_row_T *row, colnr_T at, int c);
  * @param str String to append
  * @param len Length of string to append
  */
-void op_row_append_str(editor_row_T *row, char *str);
+void row_append_str(editor_row_T *row, char *str);
 
 /**
  * @brief Delete a character from line/row
@@ -79,7 +79,7 @@ void op_row_append_str(editor_row_T *row, char *str);
  * @param row  Pointer to row to delete from
  * @param at Cursor x pos; position of the character to dlete
  */
-void op_row_del_ch(editor_row_T *row, colnr_T at);
+void row_delete_char(editor_row_T *row, colnr_T at);
 
 /* editor operations */
 /**
@@ -90,7 +90,7 @@ void op_row_del_ch(editor_row_T *row, colnr_T at);
  *
  * @param c Character to insert
  */
-void op_editor_insert_ch(int c);
+void editor_insert_char(int c);
 
 /**
  * @brief Insert a new line to the editor
@@ -100,11 +100,11 @@ void op_editor_insert_ch(int c);
  *
  * @param c Character to insert
  */
-void op_editor_insert_nline();
+void editor_insert_nline();
 
 /* @brief Deletes a character from string and deletes row if no character left
  * in the row */
 // TODO: We can't get past the last ch in a row. Implement modes
-void op_editor_del_ch();
+void editor_delete_char();
 
 #endif /* OPERATIONS_H */
