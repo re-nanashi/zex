@@ -49,7 +49,7 @@ input_read_key()
 
         if (seq[0] == '[') {
             if (seq[1] >= '0' && seq[1] <= '9') {
-                // if there is no '~' in the sequence
+                // if there is no '~' in the sequence, return Escape
                 if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
                 if (seq[2] == '~') {
                     switch (seq[1]) {
@@ -71,6 +71,7 @@ input_read_key()
                 }
             }
             else {
+                // Arrow keys sequences
                 switch (seq[1]) {
                     case 'A':
                         return ARROW_UP;
@@ -99,6 +100,7 @@ input_read_key()
         return '\x1b';
     }
     else {
+        // Return the char as ASCII code
         return c;
     }
 }
@@ -172,5 +174,60 @@ input_move_cursor(int key)
         // If row length is zero, put cx at the start of line (cx = 0)
         // Else, put cursor at the end character
         econfig.cx = rowlen == 0 ? rowlen : rowlen - 1;
+    }
+}
+
+void
+ins_process_key(int key)
+{
+    switch (key) {
+        case HOME_KEY:
+            econfig.cx = 0;
+            break;
+        case END_KEY:
+            if (econfig.cy < econfig.line_count) {
+                econfig.cx = econfig.rows[econfig.cy].size - 1;
+            }
+            break;
+        case PAGE_UP:
+        case PAGE_DOWN: {
+            if (key == PAGE_UP) {
+                econfig.cy = econfig.row_offset;
+            }
+            else if (key == PAGE_DOWN) {
+                econfig.cy = econfig.row_offset + econfig.screenrows - 1;
+                if (econfig.cy > econfig.line_count)
+                    econfig.cy = econfig.line_count - 1;
+            }
+
+            int times = econfig.screenrows;
+            while (times--) {
+                input_move_cursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+            }
+        } break;
+
+        case ARROW_UP:
+        case ARROW_DOWN:
+        case ARROW_RIGHT:
+        case ARROW_LEFT:
+            input_move_cursor(key);
+            break;
+
+        // Insert new line when user presses enter
+        case '\r':
+            editor_insert_nline();
+            break;
+
+        // Handle delete keys
+        case BACKSPACE:
+        case CTRL_KEY('h'):
+        case DEL_KEY:
+            if (key == DEL_KEY) input_move_cursor(ARROW_RIGHT);
+            editor_delete_char();
+            break;
+
+        default:
+            // Insert character to line/row
+            editor_insert_char(key);
     }
 }

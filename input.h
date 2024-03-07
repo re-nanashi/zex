@@ -8,7 +8,7 @@
 #define INPUT_H
 
 /* @brief Internal macros */
-#define CTRL_KEY(k) ((k)&0x1f) // ctrl + key input
+#define CTRL_KEY(k) ((k) & 0x1f) // ctrl + key input
 
 /* @brief Not so ordinary keys that output espace sequences */
 enum EditorKeys {
@@ -41,7 +41,11 @@ char *get_user_input_prompt(char *prompt);
  */
 void input_move_cursor(int key);
 
-/* @brief Handle keyboard input */
-void input_process_keypress();
+/**
+ * @brief Handle keyboard input when in insert mode
+ *
+ * @param key Keyboard char key
+ */
+void ins_process_key(int key);
 
 #endif /* INPUT_H */
