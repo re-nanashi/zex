@@ -37,12 +37,13 @@ input_read_key()
         if (nread == -1 && errno != EAGAIN) die("read");
     }
 
-    // Handle not so ordinary keys
+    // Handle not so ordinary keys; handle keys that emits escape codes
+    // Refer to VT100
     if (c == '\x1b') {
         char seq[3];
 
-        // Immediately read two more bytes into seq buffer
-        // if both reads time out; user just pressed Escape
+        // Immediately read two more bytes into seq buffer if both reads
+        // timeout; user just pressed Escape
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
 
