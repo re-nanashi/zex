@@ -209,57 +209,12 @@ insert_mode(cmdarg_T *arg, int key)
 {
     statusbar_set_message("--INSERT--");
 
-    if (key == CTRL_KEY('[')) return false;
-
-    switch (key) {
-        case HOME_KEY:
-            econfig.cx = 0;
-            break;
-        case END_KEY:
-            if (econfig.cy < econfig.line_count) {
-                econfig.cx = econfig.rows[econfig.cy].size - 1;
-            }
-            break;
-        case PAGE_UP:
-        case PAGE_DOWN: {
-            if (key == PAGE_UP) {
-                econfig.cy = econfig.row_offset;
-            }
-            else if (key == PAGE_DOWN) {
-                econfig.cy = econfig.row_offset + econfig.screenrows - 1;
-                if (econfig.cy > econfig.line_count)
-                    econfig.cy = econfig.line_count - 1;
-            }
-
-            int times = econfig.screenrows;
-            while (times--) {
-                input_move_cursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
-            }
-        } break;
-
-        case ARROW_UP:
-        case ARROW_DOWN:
-        case ARROW_RIGHT:
-        case ARROW_LEFT:
-            input_move_cursor(key);
-            break;
-
-        // Insert new line
-        case '\r':
-            editor_insert_nline();
-            break;
-
-        // Handle delete keys
-        case BACKSPACE:
-        case CTRL_KEY('h'):
-        case DEL_KEY:
-            if (key == DEL_KEY) input_move_cursor(ARROW_RIGHT);
-            editor_delete_char();
-            break;
-
-        default:
-            // Insert character to line/row
-            editor_insert_char(key);
+    if (key == CTRL_KEY('['))
+        return false;
+    else {
+        // Handle keys on insert mode; Most of the keys will be just be inserted
+        // as a char to the editor and not a keybind to a different motion
+        ins_process_key(key);
     }
 
     return true;
