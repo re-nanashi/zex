@@ -104,7 +104,7 @@ command_line_mode(cmdarg_T *arg, int key)
     }
     else {
         arg->count0++;
-        sbar_set_status_message("Command_line_mode(:) %d", arg->count0);
+        statusbar_set_message("Command_line_mode(:) %d", arg->count0);
     }
 
     return true;
@@ -121,8 +121,8 @@ operator_pending_mode(cmdarg_T *arg, int key)
     else {
         arg->count1++;
         /* mode for operator keys: g, R, y, d, c */
-        sbar_set_status_message("operator_pending_mode(%c) %d", arg->cmdchar,
-                                arg->count1);
+        statusbar_set_message("operator_pending_mode(%c) %d", arg->cmdchar,
+                              arg->count1);
     }
 
     return true;
@@ -138,8 +138,8 @@ count_pending_mode(cmdarg_T *arg, int key)
     else {
         arg->count1++;
         /* mode for operator keys: g, R, y, d, c */
-        sbar_set_status_message("operator_pending_mode(%c) %d", arg->cmdchar,
-                                arg->count1);
+        statusbar_set_message("operator_pending_mode(%c) %d", arg->cmdchar,
+                              arg->count1);
     }
 
     return true;
@@ -160,7 +160,7 @@ command_line_mode(cmdarg_T *arg, int key)
 
     while (1) {
         // Flush ui
-        sbar_set_status_message(":");
+        statusbar_set_message(":");
         screen_refresh();
 
         // Read keyboard input from user
@@ -170,14 +170,14 @@ command_line_mode(cmdarg_T *arg, int key)
         }
         else if (c == '\x1b') {
             // Escape command mode when user presses escape keybind
-            sbar_set_status_message("");
+            statusbar_set_message("");
             free(arg->oap);
             goto end;
         }
         else if (c == 0x0d) {
             // Execute command when user presses enter
             if (buflen != 0 && cmd_is_valid(arg->oap)) {
-                sbar_set_status_message("");
+                statusbar_set_message("");
                 execute_command(arg->oap); // free oap after use
             }
             goto end;
@@ -207,7 +207,7 @@ operator_pending_mode(cmdarg_T *arg, int k)
 bool
 insert_mode(cmdarg_T *arg, int key)
 {
-    sbar_set_status_message("--INSERT--");
+    statusbar_set_message("--INSERT--");
 
     if (key == CTRL_KEY('[')) return false;
 

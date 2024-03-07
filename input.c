@@ -113,7 +113,7 @@ get_user_input_prompt(char *prompt)
     buf[0] = '\0';
 
     while (1) {
-        sbar_set_status_message(prompt, buf);
+        statusbar_set_message(prompt, buf);
         screen_refresh();
 
         int c = input_read_key();
@@ -121,13 +121,13 @@ get_user_input_prompt(char *prompt)
             if (buflen != 0) buf[--buflen] = '\0';
         }
         else if (c == '\x1b') {
-            sbar_set_status_message("");
+            statusbar_set_message("");
             free(buf);
             return (NULL);
         }
         else if (c == '\r') {
             if (buflen != 0) {
-                sbar_set_status_message("");
+                statusbar_set_message("");
                 return buf;
             }
         }
@@ -145,7 +145,7 @@ get_user_input_prompt(char *prompt)
 void
 input_move_cursor(int key)
 {
-    // Check if there is text
+    // Check if there is text in the current row
     editor_row_T *row =
         (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
 

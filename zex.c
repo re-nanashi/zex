@@ -63,7 +63,7 @@ main(int argc, char *argv[])
     }
 
     // Set initial status message
-    sbar_set_status_message("HELP: Ctrl-Q = quit");
+    statusbar_set_message("HELP: Ctrl-Q = quit");
 
     // Enter MODE_NORMAL as default state
     state_enter(nv_mode, NULL);

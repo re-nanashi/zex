@@ -77,7 +77,7 @@ file_write()
     if (econfig.filename == NULL) {
         econfig.filename = get_user_input_prompt("Save as: %s");
         if (econfig.filename == NULL) {
-            sbar_set_status_message("Save aborted");
+            statusbar_set_message("Save aborted");
             return;
         }
     }
@@ -94,7 +94,7 @@ file_write()
                 // Free buffer
                 free(buf);
                 econfig.dirty = 0;
-                sbar_set_status_message("%d bytes written to disk", len);
+                statusbar_set_message("%d bytes written to disk", len);
                 return;
             }
         }
@@ -103,6 +103,6 @@ file_write()
 
     // Free buffer
     free(buf);
-    sbar_set_status_message("File cannot be saved. I/O error: %s",
-                            strerror(errno));
+    statusbar_set_message("File cannot be saved. I/O error: %s",
+                          strerror(errno));
 }

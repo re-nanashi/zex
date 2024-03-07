@@ -78,7 +78,7 @@ void screen_draw_cmd_line(struct append_buf *ab);
  * @param format String format
  * @param ... arguments
  */
-void sbar_set_status_message(const char *format, ...);
+void statusbar_set_message(const char *format, ...);
 
 /**
  * @brief Refresh terminal screen to draw editor

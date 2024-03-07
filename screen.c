@@ -184,7 +184,7 @@ screen_draw_cmd_line(struct append_buf *ab)
 }
 
 void
-sbar_set_status_message(const char *format, ...)
+statusbar_set_message(const char *format, ...)
 {
     va_list args;
 

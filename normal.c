@@ -309,7 +309,7 @@ replace_char_at_cur(shift_status_T sstatus)
         case SHIFT: {
             while (c != CTRL_KEY('[')) {
                 // Show mode status
-                sbar_set_status_message("-- REPLACE --");
+                statusbar_set_message("-- REPLACE --");
                 screen_refresh();
 
                 c = input_read_key();
@@ -323,7 +323,7 @@ replace_char_at_cur(shift_status_T sstatus)
                 }
             }
             // Remove mode status
-            sbar_set_status_message("");
+            statusbar_set_message("");
         } break;
 
         case SHIFT_NOT_PRESSED: {
@@ -349,7 +349,7 @@ jump_to_char(int c, shift_status_T sstatus)
     if (c == 'f' || c == 'F') goto_char = true;
 
     // Inform user of key pressed
-    sbar_set_status_message("%c", c);
+    statusbar_set_message("%c", c);
     screen_refresh();
 
     int k = input_read_key();
@@ -359,7 +359,7 @@ jump_to_char(int c, shift_status_T sstatus)
         if (row)
             sstatus == SHIFT_NOT_PRESSED ? (*cx)++ : (*cx)--;
         else {
-            sbar_set_status_message(""); // remove status
+            statusbar_set_message(""); // remove status
             return;
         }
 
@@ -383,7 +383,7 @@ jump_to_char(int c, shift_status_T sstatus)
         }
 
         // Remove status after
-        sbar_set_status_message("");
+        statusbar_set_message("");
     }
 }
 
