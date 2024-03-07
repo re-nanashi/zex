@@ -12,7 +12,7 @@
  *
  * @param buflen Pointer to length variable
  */
-char *file_convert_rows_to_string(int *buflen);
+char *file_convert_rows_to_str(int *buflen);
 
 /**
  * @brief Opens file and extracts text to be drawn to editor

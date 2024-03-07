@@ -24,7 +24,7 @@
 #include "input.h"
 
 char *
-editor_rows_to_string(int *buflen)
+editor_rows_to_str(int *buflen)
 {
     int totallen = 0;
     size_t i;
@@ -32,6 +32,8 @@ editor_rows_to_string(int *buflen)
         totallen += econfig.rows[i].size + 1;
     *buflen = totallen;
 
+    // Copy all the strings of the editor to one big string; The resulting
+    // string address will be printed on the screen
     char *buf = malloc(totallen);
     char *tmp = buf;
     for (i = 0; i < econfig.line_count; i++) {
@@ -59,6 +61,8 @@ file_open(char *filename)
     size_t linecap = 0;
     ssize_t linelen;
 
+    // Copy the text from the file to the editor rows by creating one row per
+    // line; Lines are separated by '\n' to each other.
     while ((linelen = getline(&line, &linecap, (FILE *)fp)) != -1) {
         while (linelen > 0
                && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
@@ -68,14 +72,15 @@ file_open(char *filename)
 
     free(line);
     fclose(fp);
-    econfig.dirty = 0;
+    econfig.dirty = 0; // No changes are made
 }
 
 void
 file_write()
 {
     if (econfig.filename == NULL) {
-        econfig.filename = get_user_input_prompt("Save as: %s");
+        econfig.filename =
+            get_user_input_prompt("Save as: %s"); // Get name from user
         if (econfig.filename == NULL) {
             statusbar_set_message("Save aborted");
             return;
@@ -83,13 +88,13 @@ file_write()
     }
 
     int len;
-    char *buf = editor_rows_to_string(&len);
+    char *buf = editor_rows_to_str(&len);
 
     int fd = open(econfig.filename, O_RDWR | O_CREAT, 0644);
     // Error handling
     if (fd != -1) {
         if (ftruncate(fd, len) != -1) {
-            if (write(fd, buf, len) == len) {
+            if (write(fd, buf, len) == len) { // write the file
                 close(fd);
                 // Free buffer
                 free(buf);
