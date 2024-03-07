@@ -54,10 +54,10 @@ nv_mode(cmdarg_T *arg, int key)
         cmdlarg.count0 = 0;
         state_enter(command_line_mode, &cmdlarg);
     }
-    // TODO: Prioritize insert mode
     else if (key == 'i') {
-        // Update current mode
+        // Update current mode then print to status bar
         econfig.mode = MODE_INSERT;
+        statusbar_set_message("-- INSERT --");
         // Enter insert mode; MODE_INSERT
         state_enter(insert_mode, NULL);
     }
@@ -207,15 +207,15 @@ operator_pending_mode(cmdarg_T *arg, int k)
 bool
 insert_mode(cmdarg_T *arg, int key)
 {
-    statusbar_set_message("--INSERT--");
-
-    if (key == CTRL_KEY('['))
+    if (key == CTRL_KEY('[')) {
+        statusbar_set_message(""); // remove status bar message
         return false;
+    }
     else {
         // Handle keys on insert mode; Most of the keys will be just be inserted
         // as a char to the editor and not a keybind to a different motion
         ins_process_key(key);
     }
 
-    return true;
+    return true; // return to normal mode
 }
