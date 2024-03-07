@@ -35,6 +35,7 @@ typedef struct editor_row {
 /* @brief Editor states */
 typedef enum {
     MODE_NORMAL,
+    MODE_VISUAL,
     MODE_INSERT,
     MODE_COMMAND,
     /* mode for operator keys: g, R, y, d, c */
