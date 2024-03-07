@@ -7,7 +7,7 @@
 #include "input.h"
 #include "normal.h"
 #include "screen.h"
-#include "operations.h"
+#include "edit.h"
 #include "normal.h"
 
 // Returns the current mode string "NORMAL", "VISUAL", "INSERT", and "COMMAND"
@@ -246,7 +246,7 @@ insert_mode(cmdarg_T *arg, int key)
 
         // Insert new line
         case '\r':
-            op_editor_insert_nline();
+            editor_insert_nline();
             break;
 
         // Handle delete keys
@@ -254,12 +254,12 @@ insert_mode(cmdarg_T *arg, int key)
         case CTRL_KEY('h'):
         case DEL_KEY:
             if (key == DEL_KEY) input_move_cursor(ARROW_RIGHT);
-            op_editor_del_ch();
+            editor_delete_char();
             break;
 
         default:
             // Insert character to line/row
-            op_editor_insert_ch(key);
+            editor_insert_char(key);
     }
 
     return true;

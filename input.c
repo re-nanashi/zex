@@ -21,7 +21,7 @@
 #include "screen.h"
 #include "logger.h"
 #include "config.h"
-#include "operations.h"
+#include "edit.h"
 #include "file_io.h"
 #include "normal.h"
 

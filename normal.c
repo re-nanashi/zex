@@ -14,7 +14,7 @@
 #include "config.h"
 #include "input.h"
 #include "screen.h"
-#include "operations.h"
+#include "edit.h"
 
 #define DIFF_CHAR_TYPE(c1, c2)                                                 \
     ((isalnum(c1) && !isalnum(c2)) || (ispunct(c1) && !ispunct(c2)))
@@ -469,7 +469,7 @@ nv_process_key(int c)
         case CTRL_KEY('h'):
         case DEL_KEY:
             if (c == DEL_KEY) input_move_cursor(ARROW_RIGHT);
-            op_editor_del_ch();
+            editor_delete_char();
             break;
 
         case CTRL_KEY('['):

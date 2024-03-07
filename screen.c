@@ -15,7 +15,7 @@
 #include "config.h"
 #include "terminal.h"
 #include "logger.h"
-#include "operations.h"
+#include "edit.h"
 #include "state.h"
 
 void
@@ -49,7 +49,7 @@ screen_scroll_handler()
         // When string goes past the screencols we will convert mouse pos(state)
         // to the position of the the rendered character that was offsetted
         econfig.rx =
-            op_row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
+            row_convert_cx_to_rx(&econfig.rows[econfig.cy], econfig.cx);
     }
 
     if (econfig.rx < econfig.col_offset) {

@@ -19,7 +19,7 @@
 
 #include "config.h"
 #include "screen.h"
-#include "operations.h"
+#include "edit.h"
 #include "logger.h"
 #include "input.h"
 
@@ -63,7 +63,7 @@ file_open(char *filename)
         while (linelen > 0
                && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
             linelen--;
-        op_insert_row(econfig.line_count, line);
+        row_new(econfig.line_count, line);
     }
 
     free(line);
