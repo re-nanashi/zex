@@ -39,25 +39,25 @@ row_update(editor_row_T *row)
     free(row->render);
     row->render = malloc(row->size + tabs * (ZEX_TAB_STOP - 1) + 1);
 
-    size_t idx = 0;
+    size_t i = 0;
     for (j = 0; j < row->size; j++) {
         // Skip rendering the gap
         if (j >= row->front && j < row->front + row->gap) continue;
 
         // Render tab as spaces until tabstop
         if (row->chars[j] == '\t') {
-            row->render[idx++] = ' ';
-            while (idx % ZEX_TAB_STOP != 0) {
-                row->render[idx++] = ' ';
+            row->render[i++] = ' ';
+            while (i % ZEX_TAB_STOP != 0) {
+                row->render[i++] = ' ';
             }
         }
         else {
-            row->render[idx++] = row->chars[j];
+            row->render[i++] = row->chars[j];
         }
     }
 
-    row->render[idx] = '\0';
-    row->rsize = idx;
+    row->render[i] = '\0';
+    row->rsize = i;
 }
 
 void

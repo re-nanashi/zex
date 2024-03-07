@@ -44,18 +44,18 @@ int
 term_get_cursor_pos(int *rows, int *cols)
 {
     char buf[32];
-    unsigned int idx = 0;
+    unsigned int i = 0;
 
     if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4)
         return -1; // no cursor position reported
 
     // Read escape code to buffer
-    while (idx < sizeof(buf) - 1) {
-        if (read(STDIN_FILENO, &buf[idx], 1) != 1) break;
-        if (buf[idx] == 'R') break;
-        idx++;
+    while (i < sizeof(buf) - 1) {
+        if (read(STDIN_FILENO, &buf[i], 1) != 1) break;
+        if (buf[i] == 'R') break;
+        i++;
     }
-    buf[idx] = '\0';
+    buf[i] = '\0';
 
     // Parse the buffer
     if (buf[0] != '\x1b' || buf[1] != '[') return -1;

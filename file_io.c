@@ -27,16 +27,16 @@ char *
 editor_rows_to_string(int *buflen)
 {
     int totallen = 0;
-    size_t idx;
-    for (idx = 0; idx < econfig.line_count; idx++)
-        totallen += econfig.rows[idx].size + 1;
+    size_t i;
+    for (i = 0; i < econfig.line_count; i++)
+        totallen += econfig.rows[i].size + 1;
     *buflen = totallen;
 
     char *buf = malloc(totallen);
     char *tmp = buf;
-    for (idx = 0; idx < econfig.line_count; idx++) {
-        memcpy(tmp, econfig.rows[idx].chars, econfig.rows[idx].size);
-        tmp += econfig.rows[idx].size;
+    for (i = 0; i < econfig.line_count; i++) {
+        memcpy(tmp, econfig.rows[i].chars, econfig.rows[i].size);
+        tmp += econfig.rows[i].size;
         *tmp = '\n';
         tmp++;
     }

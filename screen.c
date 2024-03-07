@@ -100,19 +100,18 @@ screen_draw_welcome_message(struct append_buf *ab, const char *format, ...)
 void
 screen_draw_rows(struct append_buf *ab)
 {
-    int idx;
+    int i;
     int welcome_message_row = econfig.screenrows / 3;
 
-    for (idx = 0; idx < econfig.screenrows; idx++) {
-        size_t filerow = idx + econfig.row_offset;
+    for (i = 0; i < econfig.screenrows; i++) {
+        size_t filerow = i + econfig.row_offset;
 
         // Length of text file does not exceed editor height
         if (filerow >= econfig.line_count) {
-            if (econfig.line_count == 0 && idx == welcome_message_row) {
+            if (econfig.line_count == 0 && i == welcome_message_row) {
                 screen_draw_welcome_message(ab, "ZEX editor v%s", ZEX_VERSION);
             }
-            else if (econfig.line_count == 0 && idx == welcome_message_row + 2)
-            {
+            else if (econfig.line_count == 0 && i == welcome_message_row + 2) {
                 screen_draw_welcome_message(
                     ab, "ZEX is open source and freely distributable");
             }
