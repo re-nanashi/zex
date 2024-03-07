@@ -47,17 +47,25 @@ bool
 nv_mode(cmdarg_T *arg, int key)
 {
     if (key == ':') {
+        // Update current mode
+        econfig.mode = MODE_COMMAND;
         // Enter command line mode; MODE_COMMAND
         cmdarg_T cmdlarg;
         cmdlarg.count0 = 0;
         state_enter(command_line_mode, &cmdlarg);
     }
+    // TODO: Prioritize insert mode
     else if (key == 'i') {
+        // Update current mode
+        econfig.mode = MODE_INSERT;
         // Enter insert mode; MODE_INSERT
         state_enter(insert_mode, NULL);
     }
     else if (key == 'g' || key == 'R' || key == 'y' || key == 'd' || key == 'c')
     {
+        // Update current mode
+        econfig.mode = MODE_OP_PENDING;
+        // TODO: Show operator that was pressed
         // Enter operator pending mode; MODE_OP_PENDING
         cmdarg_T oparg;
         oparg.cmdchar = key;
@@ -65,6 +73,8 @@ nv_mode(cmdarg_T *arg, int key)
         state_enter(operator_pending_mode, &oparg);
     }
     else if (isdigit(key) && key != '0') {
+        // Update current mode
+        econfig.mode = MODE_COUNT_PENDING;
         // Enter count pending mode; MODE_COUNT_PENDING
         cmdarg_T ctarg;
         ctarg.cmdchar = key;
@@ -77,6 +87,8 @@ nv_mode(cmdarg_T *arg, int key)
         // Default: Enter normal mode; MODE_NORMAL
         nv_process_key(key);
     }
+
+    econfig.mode = MODE_NORMAL; // return to normal mode
 
     return true;
 }
