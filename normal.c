@@ -16,6 +16,103 @@
 #include "screen.h"
 #include "operations.h"
 
+#define DIFF_CHAR_TYPE(c1, c2)                                                 \
+    ((isalnum(c1) && !isalnum(c2)) || (ispunct(c1) && !ispunct(c2)))
+
+// void cur_jmp_fwd_shift(editor_row_T *, colnr_T *);
+// void cur_jmp_fwd_unshift(editor_row_T *, colnr_T *);
+// void cur_jmp_fwd_startw();
+// void cur_jmp_fwd_endw();
+// void limit_cur_pos(editor_row_T *row, colnr_T *);
+// void mv_cur_start_non_blank_str();
+// void mv_cur_next_line_if_eol(editor_row_T *, colnr_T *);
+// void mv_cur_past_blank_chars(colnr_T *, editor_row_T *);
+// void mv_cur_to_eow(colnr_T *, editor_row_T *);
+// void mv_cur_to_blank_char(colnr_T *, editor_row_T *);
+//
+// void
+// cur_jmp_eword(shift_status_T mod)
+// {
+//     editor_row_T *row =
+//         (econfig.cy >= econfig.line_count) ? NULL :
+//         &econfig.rows[econfig.cy];
+//     colnr_T *cx = &econfig.cx;
+//
+//     switch (mod) {
+//         case SHIFT:
+//             cur_jmp_fwd_shift(row, cx);
+//             break;
+//         case SHIFT_NOT_PRESSED:
+//             cur_jmp_fwd_unshift(row, cx);
+//             break;
+//     }
+//
+//     limit_cur_pos(row, cx);
+//     mv_cur_next_line_if_eol(row, cx);
+// }
+//
+// void
+// cur_jmp_fwd_shift(editor_row_T *row, colnr_T *cx)
+// {
+//     if (!row || *cx >= row->size) return;
+//
+//     if (!isblank(row->render[*cx]) && isblank(row->render[*cx + 1])) {
+//         mv_cur_to_blank_char(cx, row);
+//         mv_cur_to_eow(cx, row);
+//     }
+//     else if (isblank(row->render[*cx])) {
+//         mv_cur_past_blank_chars(cx, row);
+//     }
+//     else {
+//         mv_cur_to_eow(cx, row);
+//     }
+// }
+//
+// void
+// cur_jmp_fwd_unshift(editor_row_T *row, colnr_T *cx)
+// {
+//     if (!row || *cx >= row->size) return;
+//
+//     if (diff_char_type(row, *cx)) {
+//         move_cur_to_next_word(cx, row);
+//     }
+//
+//     if (isalnum(row->render[*cx]) || ispunct(row->redner[*cx])) {
+//         move_cur_to_eow(cx, row);
+//     }
+//
+//     if (isblank(row->render[*cx])) {
+//         move_cur_past_blank_chars(cx, row);
+//     }
+// }
+
+// void
+// limit_cur_pos(editor_row_T *row, colnr_T *cx)
+// {
+//     if (!row) return;
+//     // TODO: Convert to real size (subtract gap buffer size)
+//     if (*cx >= row->size) {
+//         (*cx)--;
+//     }
+// }
+//
+//  void
+//  move_cur_to_next_line_if_eol(editor_row_T *row, colnr_T *cx)
+//  {
+//      if (*cx == row->size || (row->size == 0 && *cx == 0)) {
+//          if (econfig.cy == econfig.line_count - 1) {
+//              (*cx)--;
+//              return;
+//          }
+//      }
+//
+//      row = &econfig.rows[++econfig.cy];
+//      if (row) {
+//          (*cx) = 0;
+//          move_cur_to_start_non_blank_str(cx, row);
+//      }
+//  }
+//
 // TODO: Work on normal mode behavior
 void
 cursor_jump_forward_start_word(shift_status_T sstatus)
@@ -43,9 +140,9 @@ cursor_jump_forward_start_word(shift_status_T sstatus)
                 while (isalnum(row->render[*cx]))
                     (*cx)++;
             }
-            // Skip succeeding punct ch if 'w' is pressed while ch under cursor
-            // is punct
             else if (ispunct(row->render[*cx])) {
+                // Skip succeeding punct ch if 'w' is pressed while ch under
+                // cursor is punct
                 while (ispunct(row->render[*cx]))
                     (*cx)++;
             }
@@ -375,10 +472,13 @@ nv_process_key(int c)
             op_editor_del_ch();
             break;
 
+        case CTRL_KEY('['):
+            break;
+
         // Temp default
         default:
             // Insert character to line/row
-            op_editor_insert_ch(c);
+            // op_editor_insert_ch(c);
             break;
     }
 }
