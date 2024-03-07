@@ -9,6 +9,8 @@
 
 #include <stdbool.h>
 
+#include "config.h"
+
 /* @brief Internal macros */
 #define ZEX_QUIT_TIMES 2
 
@@ -27,9 +29,9 @@ typedef struct {
 
 typedef bool (*state_callback)(cmdarg_T *, int);
 
+const char *get_mode(Mode mode);
 // First instance of this function being called should pass nv_mode()
 void state_enter(state_callback s, cmdarg_T *arg);
-
 // State callback function declaration
 bool nv_mode(cmdarg_T *arg, int k);
 bool insert_mode(cmdarg_T *arg, int k);
