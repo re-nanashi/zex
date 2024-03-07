@@ -1,5 +1,5 @@
 /**
- * @file operations.c
+ * @file edit.c
  * @author re-nanashi
  * @brief Editor and row operations
  */
@@ -64,7 +64,7 @@ row_update(editor_row_T *row)
 }
 
 void
-row_insert(colnr_T at, char *s)
+row_new(colnr_T at, char *s)
 {
     // Check if there is row/line
     if (at < 0 || at > econfig.line_count) return;
@@ -166,7 +166,7 @@ void
 editor_insert_char(int c)
 {
     if (econfig.cy == econfig.line_count) {
-        row_insert(econfig.cy, "");
+        row_new(econfig.cy, "");
     }
 
     row_insert_char(&econfig.rows[econfig.cy], econfig.cx, c);
@@ -178,7 +178,7 @@ editor_insert_nline()
 {
 
     // Insert a new row
-    if (econfig.cx == 0) row_insert(econfig.cy, "");
+    if (econfig.cx == 0) row_new(econfig.cy, "");
     // Insert trailing chars to new row
     else {
         editor_row_T *row = &econfig.rows[econfig.cy]; // cursor current row
@@ -186,7 +186,7 @@ editor_insert_nline()
         // Get the size of the trailing characters
         size_t tail_sz = row->size - row->front - row->gap;
         // Insert trailing characters to new row
-        row_insert(econfig.cy + 1, &row->chars[row->front + row->gap]);
+        row_new(econfig.cy + 1, &row->chars[row->front + row->gap]);
         // Update the sizes
         row = &econfig.rows[econfig.cy];
         row->gap += tail_sz;
@@ -200,7 +200,7 @@ editor_insert_nline()
 }
 
 void
-editor_del_ch()
+editor_delete_char()
 {
     if (econfig.cy == econfig.line_count) return;
     if (econfig.cx == 0 && econfig.cy == 0) return; // no char to delete

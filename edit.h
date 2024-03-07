@@ -4,8 +4,8 @@
  * @brief Header file containing functions that will handle editing operations
  */
 
-#ifndef OPERATIONS_H
-#define OPERATIONS_H
+#ifndef EDIT_H
+#define EDIT_H
 
 #include "config.h"
 
