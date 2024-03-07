@@ -17,14 +17,14 @@ int
 row_convert_cx_to_rx(editor_row_T *row, int cx)
 {
     int rx = 0;
-
+    // Loop through the characters in the row and replace the tab character to
+    // the number of tab stop spaces declared in the header file
     for (int j = 0; j < cx; j++) {
         if (row->chars[j] == '\t')
             rx += (ZEX_TAB_STOP - 1) - (rx % ZEX_TAB_STOP);
         rx++;
     }
-
-    return rx;
+    return rx; // return new length of row
 }
 
 void
@@ -36,28 +36,31 @@ row_update(editor_row_T *row)
     for (j = 0; j < row->size; j++)
         if (row->chars[j] == '\t') tabs++;
 
+    // Initialize render buffer
     free(row->render);
     row->render = malloc(row->size + tabs * (ZEX_TAB_STOP - 1) + 1);
 
+    // Update the row to be renderable; Renderable means the there are no more
+    // tab characters and now replaced by spaces configured at the header file.
+    // It also means it skips rendering the gap buffer and only renders the
+    // appropriate text to the screen
     size_t i = 0;
     for (j = 0; j < row->size; j++) {
         // Skip rendering the gap
         if (j >= row->front && j < row->front + row->gap) continue;
-
         // Render tab as spaces until tabstop
         if (row->chars[j] == '\t') {
             row->render[i++] = ' ';
             while (i % ZEX_TAB_STOP != 0) {
-                row->render[i++] = ' ';
+                row->render[i++] = ' '; // replace tabs with spaces
             }
         }
         else {
             row->render[i++] = row->chars[j];
         }
     }
-
     row->render[i] = '\0';
-    row->rsize = i;
+    row->rsize = i; // rsize is the real size(number of characters) of the row
 }
 
 void
@@ -68,6 +71,7 @@ row_insert(colnr_T at, char *s)
     econfig.rows =
         realloc(econfig.rows, sizeof(editor_row_T) * (econfig.line_count + 1));
 
+    // Move the current row where the cursor is at to the next row
     memmove(&econfig.rows[at + 1], &econfig.rows[at],
             sizeof(editor_row_T) * (econfig.line_count - at));
 
@@ -84,10 +88,12 @@ row_insert(colnr_T at, char *s)
     econfig.rows[at].render = NULL;
     row_update(&econfig.rows[at]);
 
+    // Update editor status
     econfig.line_count++;
     econfig.dirty++;
 }
 
+// Basically, a wrapper for rbuf_destroy
 void
 row_free(editor_row_T *row)
 {
@@ -97,12 +103,15 @@ row_free(editor_row_T *row)
 void
 row_delete(linenr_T at)
 {
-    if (at < 0 || at >= econfig.line_count) return;
+    if (at < 0 || at >= econfig.line_count) return; // no row to delete
 
+    // Free the current row where the cursor is at then adjust the proceeding
+    // rows. Put the next row to the row that was deleted.
     row_free(&econfig.rows[at]);
     memmove(&econfig.rows[at], &econfig.rows[at + 1],
             sizeof(editor_row_T) * (econfig.line_count - at - 1));
 
+    // Update editor status
     econfig.line_count--;
     econfig.dirty++;
 }
@@ -178,14 +187,14 @@ editor_insert_nline()
         size_t tail_sz = row->size - row->front - row->gap;
         // Insert trailing characters to new row
         row_insert(econfig.cy + 1, &row->chars[row->front + row->gap]);
-
         // Update the sizes
         row = &econfig.rows[econfig.cy];
         row->gap += tail_sz;
-
+        // Make row renderable
         row_update(row);
     }
 
+    // Update cursor position
     econfig.cy++;
     econfig.cx = 0;
 }
