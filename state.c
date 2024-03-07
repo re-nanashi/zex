@@ -208,12 +208,17 @@ bool
 insert_mode(cmdarg_T *arg, int key)
 {
     if (key == CTRL_KEY('[')) {
-        statusbar_set_message(""); // remove status bar message
+        // Move cursor to the left by one; Not really sure why but VIM and NVIM
+        // does it so might as well implement it here.
+        colnr_T *cx = &econfig.cx;
+        *cx = *cx == 0 ? 0 : *cx - 1;
+        // Remove status bar message
+        statusbar_set_message("");
         return false;
     }
     else {
         // Handle keys on insert mode; Most of the keys will be just be inserted
-        // as a char to the editor and not a keybind to a different motion
+        // as a char to the editor and not a keybind to a different motion.
         ins_process_key(key);
     }
 
