@@ -4,14 +4,27 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "input.h"
 #include "normal.h"
 #include "screen.h"
 #include "operations.h"
 #include "normal.h"
 
-// TODO: Just make sure that state code is working and
+// Returns the current mode string "NORMAL", "VISUAL", "INSERT", and "COMMAND"
+const char *
+get_mode(Mode mode)
+{
+    switch (mode) {
+        case MODE_VISUAL:
+            return "VISUAL";
+        case MODE_INSERT:
+            return "INSERT";
+        case MODE_COMMAND:
+            return "CMD";
+        default:
+            return "NORMAL";
+    }
+}
 
 // First instance of this function being called should pass nv_mode()
 void
@@ -20,7 +33,7 @@ state_enter(state_callback s, cmdarg_T *arg)
     while (1) {
         // Flush the UI using data from previous state changes
         screen_refresh();
-        int key = input_read_key();
+        int key = input_read_key(); // read user keyboard input
 
         // Execute the state callback
         bool check_result = s(arg, key);
@@ -34,27 +47,25 @@ bool
 nv_mode(cmdarg_T *arg, int key)
 {
     if (key == ':') {
-        sbar_set_status_message(":");
-        cmdarg_T cmdarg;
-        cmdarg.count0 = 0;
-        // Enter command line mode; command line
-        state_enter(command_line_mode, &cmdarg);
+        // Enter command line mode; MODE_COMMAND
+        cmdarg_T cmdlarg;
+        cmdlarg.count0 = 0;
+        state_enter(command_line_mode, &cmdlarg);
     }
     else if (key == 'i') {
-        sbar_set_status_message("-- INSERT --");
-        // Enter insert mode
+        // Enter insert mode; MODE_INSERT
         state_enter(insert_mode, NULL);
     }
     else if (key == 'g' || key == 'R' || key == 'y' || key == 'd' || key == 'c')
     {
-        sbar_set_status_message("%c", key);
+        // Enter operator pending mode; MODE_OP_PENDING
         cmdarg_T oparg;
         oparg.cmdchar = key;
         oparg.count1 = 0;
         state_enter(operator_pending_mode, &oparg);
     }
     else if (isdigit(key) && key != '0') {
-        sbar_set_status_message("num");
+        // Enter count pending mode; MODE_COUNT_PENDING
         cmdarg_T ctarg;
         ctarg.cmdchar = key;
         // count_pending_mode converts the cmdchar (single digit unsigned int)
@@ -63,6 +74,7 @@ nv_mode(cmdarg_T *arg, int key)
         state_enter(count_pending_mode, &ctarg);
     }
     else {
+        // Default: Enter normal mode; MODE_NORMAL
         nv_process_key(key);
     }
 

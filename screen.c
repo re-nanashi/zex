@@ -16,6 +16,7 @@
 #include "terminal.h"
 #include "logger.h"
 #include "operations.h"
+#include "state.h"
 
 void
 write_to_abuf(append_buf_T *ab, const char *s, int len)
@@ -139,10 +140,13 @@ screen_draw_status_bar(struct append_buf *ab)
     // Draw bar by inverting color (see Select Graphic Rendition)
     write_to_abuf(ab, "\x1b[7m", 4); // m command
 
+    // Get the current mode
+    const char *curmode = get_mode(econfig.mode);
+
     char status[80], rstatus[80];
     int len =
-        snprintf(status, sizeof(status), "%.20s - %d lines %s",
-                 econfig.filename ? econfig.filename : "[No Name]",
+        snprintf(status, sizeof(status), " %.20s - %.20s - %d lines %s",
+                 curmode, econfig.filename ? econfig.filename : "[No Name]",
                  (int)econfig.line_count, econfig.dirty ? "(modified)" : "");
     int rlen = snprintf(rstatus, sizeof(rstatus), "%lu:%lu",
                         econfig.line_count > 0 ? econfig.cy + 1 : econfig.cy,
