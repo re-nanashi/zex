@@ -101,7 +101,7 @@ input_read_key()
     }
     else {
         // Return the char as ASCII code
-        return c;
+        return (int)c;
     }
 }
 
