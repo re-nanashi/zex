@@ -7,10 +7,9 @@
 #include "input.h"
 #include "normal.h"
 #include "screen.h"
-#include "edit.h"
 #include "normal.h"
 
-// Returns the current mode string "NORMAL", "VISUAL", "INSERT", and "COMMAND"
+// Returns the current mode string "NORMAL", "VISUAL", "INSERT", and "COMMAND".
 const char *
 get_mode(Mode mode)
 {
@@ -26,16 +25,16 @@ get_mode(Mode mode)
     }
 }
 
-// First instance of this function being called should pass nv_mode()
+// First instance of this function being called should pass nv_mode().
 void
 state_enter(state_callback s, cmdarg_T *arg)
 {
     while (1) {
-        // Flush the UI using data from previous state changes
+        // Flush the UI using data from previous state changes.
         screen_refresh();
         int key = input_read_key(); // read user keyboard input
 
-        // Execute the state callback
+        // Execute the state callback.
         bool check_result = s(arg, key);
         if (!check_result) {
             break; // terminate this state
@@ -55,14 +54,13 @@ nv_mode(cmdarg_T *arg, int key)
         state_enter(command_line_mode, &cmdlarg);
     }
     else if (key == 'i') {
-        // Update current mode then print to status bar
+        // Update current mode then print to status bar.
         econfig.mode = MODE_INSERT;
         statusbar_set_message("-- INSERT --");
         // Enter insert mode; MODE_INSERT
         state_enter(insert_mode, NULL);
     }
-    else if (key == 'g' || key == 'R' || key == 'y' || key == 'd' || key == 'c')
-    {
+    else if (key == 'R' || key == 'y' || key == 'd' || key == 'c') {
         // Update current mode
         econfig.mode = MODE_OP_PENDING;
         // TODO: Show operator that was pressed
@@ -147,8 +145,8 @@ count_pending_mode(cmdarg_T *arg, int key)
 
 /*
 // TODO: Command mode functions
-void execute_command(oparg_T *);
-bool cmd_is_valid(const oparg_T *);
+void execute_command(opcmdarg_T *);
+bool cmd_is_valid(const opcmdarg_T *);
 
 // Where do we get the next input?
 bool
