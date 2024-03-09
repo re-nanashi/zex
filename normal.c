@@ -15,287 +15,186 @@
 #include "input.h"
 #include "screen.h"
 #include "edit.h"
+#include "state.h"
 
 #define DIFF_CHAR_TYPE(c1, c2)                                                 \
     ((isalnum(c1) && !isalnum(c2)) || (ispunct(c1) && !ispunct(c2)))
 
-// void cur_jmp_fwd_shift(editor_row_T *, colnr_T *);
-// void cur_jmp_fwd_unshift(editor_row_T *, colnr_T *);
-// void cur_jmp_fwd_startw();
-// void cur_jmp_fwd_endw();
-// void limit_cur_pos(editor_row_T *row, colnr_T *);
-// void mv_cur_start_non_blank_str();
-// void mv_cur_next_line_if_eol(editor_row_T *, colnr_T *);
-// void mv_cur_past_blank_chars(colnr_T *, editor_row_T *);
-// void mv_cur_to_eow(colnr_T *, editor_row_T *);
-// void mv_cur_to_blank_char(colnr_T *, editor_row_T *);
-//
-// void
-// cur_jmp_eword(shift_status_T mod)
-// {
-//     editor_row_T *row =
-//         (econfig.cy >= econfig.line_count) ? NULL :
-//         &econfig.rows[econfig.cy];
-//     colnr_T *cx = &econfig.cx;
-//
-//     switch (mod) {
-//         case SHIFT:
-//             cur_jmp_fwd_shift(row, cx);
-//             break;
-//         case SHIFT_NOT_PRESSED:
-//             cur_jmp_fwd_unshift(row, cx);
-//             break;
-//     }
-//
-//     limit_cur_pos(row, cx);
-//     mv_cur_next_line_if_eol(row, cx);
-// }
-//
-// void
-// cur_jmp_fwd_shift(editor_row_T *row, colnr_T *cx)
-// {
-//     if (!row || *cx >= row->size) return;
-//
-//     if (!isblank(row->render[*cx]) && isblank(row->render[*cx + 1])) {
-//         mv_cur_to_blank_char(cx, row);
-//         mv_cur_to_eow(cx, row);
-//     }
-//     else if (isblank(row->render[*cx])) {
-//         mv_cur_past_blank_chars(cx, row);
-//     }
-//     else {
-//         mv_cur_to_eow(cx, row);
-//     }
-// }
-//
-// void
-// cur_jmp_fwd_unshift(editor_row_T *row, colnr_T *cx)
-// {
-//     if (!row || *cx >= row->size) return;
-//
-//     if (diff_char_type(row, *cx)) {
-//         move_cur_to_next_word(cx, row);
-//     }
-//
-//     if (isalnum(row->render[*cx]) || ispunct(row->redner[*cx])) {
-//         move_cur_to_eow(cx, row);
-//     }
-//
-//     if (isblank(row->render[*cx])) {
-//         move_cur_past_blank_chars(cx, row);
-//     }
-// }
+enum Directions { FORWARD = 1, BACKWARD = -1 };
 
-// void
-// limit_cur_pos(editor_row_T *row, colnr_T *cx)
-// {
-//     if (!row) return;
-//     // TODO: Convert to real size (subtract gap buffer size)
-//     if (*cx >= row->size) {
-//         (*cx)--;
-//     }
-// }
-//
-//  void
-//  move_cur_to_next_line_if_eol(editor_row_T *row, colnr_T *cx)
-//  {
-//      if (*cx == row->size || (row->size == 0 && *cx == 0)) {
-//          if (econfig.cy == econfig.line_count - 1) {
-//              (*cx)--;
-//              return;
-//          }
-//      }
-//
-//      row = &econfig.rows[++econfig.cy];
-//      if (row) {
-//          (*cx) = 0;
-//          move_cur_to_start_non_blank_str(cx, row);
-//      }
-//  }
-//
-// TODO: Work on normal mode behavior
-void
-cursor_jump_forward_start_word(shift_status_T sstatus)
+editor_row_T *
+get_current_row()
 {
-    // Check if there is a text
-    editor_row_T *row =
-        (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
-    colnr_T *cx = &econfig.cx;
+    return (econfig.cy >= econfig.line_count) ? NULL
+                                              : &econfig.rows[econfig.cy];
+}
 
-    switch (sstatus) {
-        case SHIFT:
-            // Go to the next space/blank ch
-            while (!isblank(row->render[*cx]) && *cx < row->size)
-                (*cx)++;
-            // Go to the next non-space/blank ch
-            while (isblank(row->render[*cx]) && *cx < row->size) {
-                (*cx)++;
-            }
-            break;
+void
+jump_to_next_non_blank_char(editor_row_T *row, colnr_T *cx)
+{
+    while (!isblank(row->render[*cx]) && *cx < row->size)
+        (*cx)++;
+}
 
-        case SHIFT_NOT_PRESSED:
-            // Skip succeeding alnum ch if 'w' is pressed while ch under cursor
-            // is alnum
-            if (isalnum(row->render[*cx])) {
-                while (isalnum(row->render[*cx]))
-                    (*cx)++;
-            }
-            else if (ispunct(row->render[*cx])) {
-                // Skip succeeding punct ch if 'w' is pressed while ch under
-                // cursor is punct
-                while (ispunct(row->render[*cx]))
-                    (*cx)++;
-            }
+void
+jump_to_next_blank_char(editor_row_T *row, colnr_T *cx)
+{
+    while (isblank(row->render[*cx]) && *cx < row->size)
+        (*cx)++;
+}
 
-            // Skip blank characters
-            if (isblank(row->render[*cx])) {
-                while (isblank(row->render[*cx]))
-                    (*cx)++;
-            }
-            break;
+void
+skip_successive_alnum_or_punct_chars(editor_row_T *row, colnr_T *cx)
+{
+    if (isalnum(row->render[*cx])) {
+        while (isalnum(row->render[*cx]))
+            (*cx)++;
+    }
+    else if (ispunct(row->render[*cx])) {
+        while (ispunct(row->render[*cx]))
+            (*cx)++;
+    }
+}
+
+void
+skip_blank_chars(editor_row_T *row, colnr_T *cx)
+{
+    while (isblank(row->render[*cx]))
+        (*cx)++;
+}
+
+void
+jump_to_end_of_current_word(editor_row_T *row, colnr_T *cx)
+{
+    if (!isblank(row->render[*cx]) && isblank(row->render[*cx + 1])) {
+        (*cx)++;
+        skip_blank_chars(row, cx);
+        while (!isblank(row->render[*cx])
+               && (isalnum(row->render[*cx]) || ispunct(row->render[*cx])))
+            (*cx)++;
+        (*cx)--;
+    }
+    else if (isblank(row->render[*cx]) && *cx < row->size) {
+        skip_blank_chars(row, cx);
+    }
+    else if (*cx >= row->size - 1 && *cx > 0) {
+        (*cx)++;
+    }
+    else {
+        while (!isblank(row->render[*cx])
+               && (isalnum(row->render[*cx]) || ispunct(row->render[*cx])))
+            (*cx)++;
+        (*cx)--;
+    }
+}
+
+void
+jump_to_next_word(editor_row_T *row, colnr_T *cx)
+{
+    if ((isalnum(row->render[*cx]) && !isalnum(row->render[*cx + 1]))
+        || (ispunct(row->render[*cx]) && !ispunct(row->render[*cx + 1])))
+    {
+        (*cx)++;
     }
 
-    // Stop cursor from moving forward if last row
+    skip_successive_alnum_or_punct_chars(row, cx);
+    skip_blank_chars(row, cx);
+    skip_successive_alnum_or_punct_chars(row, cx);
+    (*cx)--;
+}
+
+void
+handle_end_of_line(editor_row_T *row, colnr_T *cx)
+{
     if (econfig.cy == econfig.line_count - 1 && (*cx) == row->size) {
         (*cx)--;
-        return;
     }
+}
 
-    // Move to cursor to the next line if end of line
+void
+move_to_next_line_if_needed(editor_row_T *row, colnr_T *cx)
+{
     if (*cx == row->size || (row->size == 0 && *cx == 0)) {
         row = (econfig.cy == econfig.line_count - 1)
                   ? NULL
                   : &econfig.rows[++econfig.cy];
         if (row) {
             (*cx) = 0;
-            // Find the first non-blank character
-            while (isblank(row->render[*cx]))
-                (*cx)++;
+            skip_blank_chars(row, cx);
         }
     }
 }
 
 void
-cursor_jump_forward_end_word(shift_status_T sstatus)
+jump_to_end_of_first_word(editor_row_T *row, colnr_T *cx)
 {
-    // Check if there is a text
-    editor_row_T *row =
-        (econfig.cy >= econfig.line_count) ? NULL : &econfig.rows[econfig.cy];
+    if (isalnum(row->render[*cx])) {
+        while (isalnum(row->render[*cx]))
+            (*cx)++;
+        (*cx)--;
+    }
+    else if (ispunct(row->render[*cx])) {
+        while (ispunct(row->render[*cx]))
+            (*cx)++;
+        (*cx)--;
+    }
+}
+
+void
+fwd_word(bool flag)
+{
+    editor_row_T *row = get_current_row();
     colnr_T *cx = &econfig.cx;
 
-    switch (sstatus) {
-        case SHIFT:
-            if (!isblank(row->render[*cx]) && isblank(row->render[*cx + 1])) {
-                // Go to the blank char
-                (*cx)++;
-
-                // Skip blanks chars; Assume: will end up at the first ch of
-                // word OR end up at the last ch of the row
-                while (isblank(row->render[*cx]) && *cx < row->size)
-                    (*cx)++;
-
-                // Go to the end of the word
-                while (
-                    !isblank(row->render[*cx])
-                    && (isalnum(row->render[*cx]) || ispunct(row->render[*cx])))
-                    (*cx)++;
-                (*cx)--;
-            }
-            else if (isblank(row->render[*cx]) && *cx < row->size) {
-                while (isblank(row->render[*cx]))
-                    (*cx)++; // will probably end up either the start of the
-                             // word or at '/n'
-            }
-            // If we are at the end of the line
-            else if (*cx >= row->size - 1) {
-                // We are not in a blank line
-                if (*cx > 0) (*cx)++;
-            }
-            else {
-                // Go to the end of the word
-                while (
-                    !isblank(row->render[*cx])
-                    && (isalnum(row->render[*cx]) || ispunct(row->render[*cx])))
-                    (*cx)++;
-                (*cx)--;
-            }
-
-            break;
-
-        case SHIFT_NOT_PRESSED:
-            // Check if next ch is different type than the current ch
-            if ((isalnum(row->render[*cx]) && !isalnum(row->render[*cx + 1]))
-                || (ispunct(row->render[*cx])
-                    && !ispunct(row->render[*cx + 1])))
-            {
-                // Go to the next word
-                (*cx)++;
-            }
-
-            // Go to the end of the word
-            if (isalnum(row->render[*cx])) {
-                while (isalnum(row->render[*cx]))
-                    (*cx)++;
-                (*cx)--;
-            }
-            // Go to the end of the word
-            else if (ispunct(row->render[*cx])) {
-                while (ispunct(row->render[*cx]))
-                    (*cx)++;
-                (*cx)--;
-            }
-
-            // Skip blank characters then go to the end of the next word
-            if (isblank(row->render[*cx])) {
-                while (isblank(row->render[*cx]))
-                    (*cx)++;
-
-                if (isalnum(row->render[*cx])) {
-                    while (isalnum(row->render[*cx]))
-                        (*cx)++;
-                    (*cx)--;
-                }
-
-                if (ispunct(row->render[*cx])) {
-                    while (ispunct(row->render[*cx]))
-                        (*cx)++;
-                    (*cx)--;
-                }
-            }
-
-            break;
+    if (flag == true) {
+        jump_to_next_non_blank_char(row, cx);
+        jump_to_next_blank_char(row, cx);
+    }
+    else {
+        skip_successive_alnum_or_punct_chars(row, cx);
+        skip_blank_chars(row, cx);
     }
 
-    // Stop cursor from moving forward if last row
-    if (econfig.cy == econfig.line_count - 1 && (*cx) == row->size) {
-        (*cx)--;
-        return;
+    handle_end_of_line(row, cx);
+    move_to_next_line_if_needed(row, cx);
+}
+
+void
+end_word(bool flag)
+{
+    editor_row_T *row = get_current_row();
+    colnr_T *cx = &econfig.cx;
+
+    if (flag == true) {
+        jump_to_end_of_current_word(row, cx);
+    }
+    else {
+        jump_to_next_word(row, cx);
     }
 
-    // Move to cursor to the next line if end of line
-    if (*cx == row->size || (row->size == 0 && *cx == 0)) {
-        row = (econfig.cy == econfig.line_count - 1)
-                  ? NULL
-                  : &econfig.rows[++econfig.cy];
-        if (row) {
-            (*cx) = 0;
-            // Find the first non-blank character
-            while (isblank(row->render[*cx]))
-                (*cx)++;
+    handle_end_of_line(row, cx);
+    move_to_next_line_if_needed(row, cx);
+    jump_to_end_of_first_word(row, cx);
+}
 
-            // Go to the end of the first non-blank string
-            if (isalnum(row->render[*cx])) {
-                while (isalnum(row->render[*cx]))
-                    (*cx)++;
-                (*cx)--;
-            }
+void
+nv_wordcmd(const cmdarg_T *ca)
+{
+    bool word_end = false;
+    bool flag = ca->arg; // flag for shift mod; if true then shift is pressed
 
-            if (ispunct(row->render[*cx])) {
-                while (ispunct(row->render[*cx]))
-                    (*cx)++;
-                (*cx)--;
-            }
-        }
+    // Jump cursor to the either first char or last char of the next word
+    // Set true if cursor will jump to the end of a word
+    if (ca->cmdchar == 'e' || ca->cmdchar == 'E') {
+        word_end = true;
+    }
+    // if e/E go to end of word else if w/W go to start of word
+    if (word_end) {
+        end_word(flag);
+    }
+    else {
+        // w/W
+        fwd_word(flag);
     }
 }
 
@@ -412,12 +311,12 @@ nv_process_key(int c)
 
         // Jump by start of words (including punctuation)
         case 'w':
-            cursor_jump_forward_start_word(SHIFT_NOT_PRESSED);
+            nv_wordcmd(SHIFT_NOT_PRESSED);
             break;
 
         // Jump by words
         case 'W':
-            cursor_jump_forward_start_word(SHIFT);
+            nv_wordcmd(SHIFT);
             break;
 
         // Jump by end of words (including punctuation)
